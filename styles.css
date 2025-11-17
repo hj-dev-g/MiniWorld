@@ -1,0 +1,358 @@
+/* Reset & Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #fafafa;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Header */
+.header {
+    background-color: #fff;
+    padding: 20px 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: 700;
+    color: #333;
+}
+
+.nav {
+    display: flex;
+    gap: 30px;
+}
+
+.nav a {
+    color: #666;
+    text-decoration: none;
+    font-size: 16px;
+    transition: color 0.3s ease;
+}
+
+.nav a:hover {
+    color: #333;
+}
+
+/* Hero Section */
+.hero {
+    background-color: #fff;
+    padding: 80px 0;
+    text-align: center;
+}
+
+.hero-title {
+    font-size: 48px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: #222;
+}
+
+.hero-subtitle {
+    font-size: 20px;
+    color: #666;
+}
+
+/* Filter Section */
+.filter-section {
+    padding: 40px 0;
+    background-color: #fff;
+    margin-top: 20px;
+}
+
+.filter-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 12px 28px;
+    border: 2px solid #ddd;
+    background-color: #fff;
+    color: #666;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 30px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.filter-btn:hover {
+    border-color: #333;
+    color: #333;
+}
+
+.filter-btn.active {
+    background-color: #333;
+    border-color: #333;
+    color: #fff;
+}
+
+/* Gallery Section */
+.gallery-section {
+    padding: 60px 0;
+}
+
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.gallery-item {
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    background-color: #fff;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.gallery-item:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+}
+
+.gallery-item img {
+    width: 100%;
+    height: 300px;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.3s ease;
+}
+
+.gallery-item:hover img {
+    transform: scale(1.05);
+}
+
+.overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+    color: #fff;
+    padding: 20px;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+}
+
+.gallery-item:hover .overlay {
+    transform: translateY(0);
+}
+
+.overlay h3 {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.gallery-item.hidden {
+    display: none;
+}
+
+/* About Section */
+.about-section {
+    background-color: #fff;
+    padding: 80px 0;
+    text-align: center;
+}
+
+.about-section h2 {
+    font-size: 36px;
+    margin-bottom: 24px;
+    color: #222;
+}
+
+.about-section p {
+    font-size: 18px;
+    color: #666;
+    max-width: 700px;
+    margin: 0 auto 16px;
+}
+
+/* Contact Section */
+.contact-section {
+    padding: 80px 0;
+    text-align: center;
+    background-color: #fafafa;
+}
+
+.contact-section h2 {
+    font-size: 36px;
+    margin-bottom: 24px;
+    color: #222;
+}
+
+.contact-section p {
+    font-size: 18px;
+    color: #666;
+    margin-bottom: 20px;
+}
+
+.social-links {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 30px;
+}
+
+.social-links a {
+    color: #333;
+    text-decoration: none;
+    font-size: 16px;
+    padding: 10px 20px;
+    border: 2px solid #ddd;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.social-links a:hover {
+    background-color: #333;
+    color: #fff;
+    border-color: #333;
+}
+
+/* Footer */
+.footer {
+    background-color: #fff;
+    padding: 30px 0;
+    text-align: center;
+    color: #999;
+    border-top: 1px solid #eee;
+}
+
+/* Lightbox */
+.lightbox {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.95);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.lightbox.active {
+    display: flex;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.lightbox-img {
+    max-width: 90%;
+    max-height: 85vh;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.close-lightbox {
+    position: absolute;
+    top: 30px;
+    right: 40px;
+    font-size: 50px;
+    color: #fff;
+    cursor: pointer;
+    transition: color 0.3s ease;
+    z-index: 1001;
+}
+
+.close-lightbox:hover {
+    color: #ccc;
+}
+
+.lightbox-caption {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #fff;
+    font-size: 20px;
+    text-align: center;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .hero-title {
+        font-size: 32px;
+    }
+
+    .hero-subtitle {
+        font-size: 16px;
+    }
+
+    .gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .gallery-item img {
+        height: 250px;
+    }
+
+    .nav {
+        gap: 15px;
+    }
+
+    .nav a {
+        font-size: 14px;
+    }
+
+    .about-section h2,
+    .contact-section h2 {
+        font-size: 28px;
+    }
+
+    .close-lightbox {
+        font-size: 40px;
+        top: 20px;
+        right: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .gallery-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .filter-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .filter-btn {
+        width: 200px;
+    }
+}

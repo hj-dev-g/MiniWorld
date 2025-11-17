@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Creative Portfolio</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">My Portfolio</h1>
+            <nav class="nav">
+                <a href="#about">About</a>
+                <a href="#contact">Contact</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h2 class="hero-title">Creative Works</h2>
+            <p class="hero-subtitle">이모티콘, 캘리그라피 그리고 더 많은 작품들</p>
+        </div>
+    </section>
+
+    <!-- Filter Buttons -->
+    <section class="filter-section">
+        <div class="container">
+            <div class="filter-buttons">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="emoticon">Emoticon</button>
+                <button class="filter-btn" data-filter="calligraphy">Calligraphy</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gallery -->
+    <section class="gallery-section">
+        <div class="container">
+            <div class="gallery-grid" id="gallery">
+                <!-- Sample items - 실제 이미지로 교체하세요 -->
+                <div class="gallery-item" data-category="emoticon">
+                    <img src="images/emoticon-1.jpg" alt="Emoticon 1">
+                    <div class="overlay">
+                        <h3>Emoticon 1</h3>
+                    </div>
+                </div>
+
+                <div class="gallery-item" data-category="emoticon">
+                    <img src="images/emoticon-2.jpg" alt="Emoticon 2">
+                    <div class="overlay">
+                        <h3>Emoticon 2</h3>
+                    </div>
+                </div>
+
+                <div class="gallery-item" data-category="calligraphy">
+                    <img src="images/calligraphy-1.jpg" alt="Calligraphy 1">
+                    <div class="overlay">
+                        <h3>Calligraphy 1</h3>
+                    </div>
+                </div>
+
+                <div class="gallery-item" data-category="calligraphy">
+                    <img src="images/calligraphy-2.jpg" alt="Calligraphy 2">
+                    <div class="overlay">
+                        <h3>Calligraphy 2</h3>
+                    </div>
+                </div>
+
+                <div class="gallery-item" data-category="emoticon">
+                    <img src="images/emoticon-3.jpg" alt="Emoticon 3">
+                    <div class="overlay">
+                        <h3>Emoticon 3</h3>
+                    </div>
+                </div>
+
+                <div class="gallery-item" data-category="calligraphy">
+                    <img src="images/calligraphy-3.jpg" alt="Calligraphy 3">
+                    <div class="overlay">
+                        <h3>Calligraphy 3</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section class="about-section" id="about">
+        <div class="container">
+            <h2>About</h2>
+            <p>이모티콘과 캘리그라피 작업을 하는 크리에이터입니다.</p>
+            <p>다양한 스타일의 작품들을 만들고 있습니다.</p>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="contact-section" id="contact">
+        <div class="container">
+            <h2>Contact</h2>
+            <p>Email: your.email@example.com</p>
+            <div class="social-links">
+                <a href="#">Instagram</a>
+                <a href="#">Behance</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 My Portfolio. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Lightbox -->
+    <div class="lightbox" id="lightbox">
+        <span class="close-lightbox">&times;</span>
+        <img class="lightbox-img" id="lightbox-img" src="" alt="">
+        <div class="lightbox-caption" id="lightbox-caption"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
