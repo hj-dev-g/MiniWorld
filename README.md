@@ -1,24 +1,27 @@
 # My Creative Portfolio
 
-Loish 스타일의 깔끔한 포트폴리오 웹사이트입니다. 이모티콘, 캘리그라피 등 다양한 작품을 보여줄 수 있습니다.
+네이버 OGQ 마켓 스타일의 크리에이터 포트폴리오 웹사이트입니다. 이모티콘, 캘리그라피 등 다양한 작품을 보여줄 수 있습니다.
 
 ## 특징
 
-- 깔끔한 그리드 레이아웃
+- 크리에이터 프로필 섹션 (배너, 프로필 사진, 팔로우 버튼)
+- OGQ 마켓 스타일의 작품 카드 (가격, 좋아요 표시)
 - 작품 카테고리별 필터링 (이모티콘, 캘리그라피)
 - Lightbox로 작품 크게 보기
 - 반응형 디자인 (모바일/태블릿/PC 지원)
-- 부드러운 호버 효과 및 애니메이션
+- 밝고 현대적인 디자인
 
 ## 사용 방법
 
-### 1. 작품 이미지 추가하기
+### 1. 프로필 이미지 추가하기
 
-`images/` 폴더에 작품 이미지를 추가하세요:
+`images/` 폴더에 다음 이미지들을 추가하세요:
 
 ```
 images/
-  ├── emoticon-1.jpg
+  ├── banner.jpg        # 프로필 배너 이미지 (1200x240px 권장)
+  ├── profile.jpg       # 프로필 사진 (정사각형, 300x300px 권장)
+  ├── emoticon-1.jpg    # 작품 이미지
   ├── emoticon-2.jpg
   ├── emoticon-3.jpg
   ├── calligraphy-1.jpg
@@ -32,9 +35,20 @@ images/
 
 ```html
 <div class="gallery-item" data-category="emoticon">
-    <img src="images/your-image.jpg" alt="작품 설명">
-    <div class="overlay">
-        <h3>작품 제목</h3>
+    <div class="item-image">
+        <img src="images/your-image.jpg" alt="작품 설명">
+        <button class="like-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+        </button>
+    </div>
+    <div class="item-info">
+        <h3 class="item-title">작품 제목</h3>
+        <p class="item-price">₩3,000</p>
+        <div class="item-stats">
+            <span class="stat">❤️ 128</span>
+        </div>
     </div>
 </div>
 ```

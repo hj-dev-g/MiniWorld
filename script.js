@@ -14,7 +14,6 @@ filterButtons.forEach(button => {
         galleryItems.forEach(item => {
             if (filterValue === 'all') {
                 item.classList.remove('hidden');
-                // Add fade-in animation
                 item.style.animation = 'fadeIn 0.5s ease';
             } else {
                 const itemCategory = item.getAttribute('data-category');
@@ -29,6 +28,22 @@ filterButtons.forEach(button => {
     });
 });
 
+// Like button functionality
+const likeButtons = document.querySelectorAll('.like-btn');
+
+likeButtons.forEach(button => {
+    button.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent lightbox from opening
+        button.classList.toggle('liked');
+
+        // Optional: Add animation
+        button.style.transform = 'scale(1.3)';
+        setTimeout(() => {
+            button.style.transform = 'scale(1)';
+        }, 200);
+    });
+});
+
 // Lightbox functionality
 const lightbox = document.getElementById('lightbox');
 const lightboxImg = document.getElementById('lightbox-img');
@@ -36,12 +51,15 @@ const lightboxCaption = document.getElementById('lightbox-caption');
 const closeLightbox = document.querySelector('.close-lightbox');
 
 galleryItems.forEach(item => {
-    item.addEventListener('click', () => {
-        const img = item.querySelector('img');
-        const caption = item.querySelector('.overlay h3');
+    item.addEventListener('click', (e) => {
+        // Don't open lightbox if clicking like button
+        if (e.target.closest('.like-btn')) return;
+
+        const img = item.querySelector('.item-image img');
+        const title = item.querySelector('.item-title');
 
         lightboxImg.src = img.src;
-        lightboxCaption.textContent = caption ? caption.textContent : '';
+        lightboxCaption.textContent = title ? title.textContent : '';
         lightbox.classList.add('active');
         document.body.style.overflow = 'hidden'; // Prevent scrolling
     });
@@ -83,13 +101,29 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     });
 });
 
+// Follow button functionality
+const followBtn = document.querySelector('.follow-btn');
+if (followBtn) {
+    followBtn.addEventListener('click', () => {
+        if (followBtn.textContent === '팔로우') {
+            followBtn.textContent = '팔로잉';
+            followBtn.style.backgroundColor = '#e0e0e0';
+            followBtn.style.color = '#666';
+        } else {
+            followBtn.textContent = '팔로우';
+            followBtn.style.backgroundColor = '#00c73c';
+            followBtn.style.color = '#fff';
+        }
+    });
+}
+
 // Add fade-in animation CSS dynamically
 const style = document.createElement('style');
 style.textContent = `
     @keyframes fadeIn {
         from {
             opacity: 0;
-            transform: scale(0.9);
+            transform: scale(0.95);
         }
         to {
             opacity: 1;

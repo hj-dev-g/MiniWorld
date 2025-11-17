@@ -18,11 +18,28 @@
         </div>
     </header>
 
-    <!-- Hero Section -->
-    <section class="hero">
+    <!-- Creator Profile Section -->
+    <section class="creator-profile">
+        <div class="profile-banner">
+            <img src="images/banner.jpg" alt="Profile Banner" class="banner-img">
+        </div>
         <div class="container">
-            <h2 class="hero-title">Creative Works</h2>
-            <p class="hero-subtitle">이모티콘, 캘리그라피 그리고 더 많은 작품들</p>
+            <div class="profile-content">
+                <div class="profile-avatar">
+                    <img src="images/profile.jpg" alt="Profile" class="avatar-img">
+                </div>
+                <div class="profile-info">
+                    <h1 class="creator-name">마밍이</h1>
+                    <p class="creator-description">이모티콘, 캘리그라피 작업을 하는 크리에이터입니다 ✨</p>
+                    <div class="profile-stats">
+                        <span class="stat-item"><strong>24</strong> 작품</span>
+                        <span class="stat-item"><strong>1.2K</strong> 팔로워</span>
+                    </div>
+                </div>
+                <div class="profile-actions">
+                    <button class="follow-btn">팔로우</button>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -43,44 +60,110 @@
             <div class="gallery-grid" id="gallery">
                 <!-- Sample items - 실제 이미지로 교체하세요 -->
                 <div class="gallery-item" data-category="emoticon">
-                    <img src="images/emoticon-1.jpg" alt="Emoticon 1">
-                    <div class="overlay">
-                        <h3>Emoticon 1</h3>
+                    <div class="item-image">
+                        <img src="images/emoticon-1.jpg" alt="귀여운 고양이 이모티콘">
+                        <button class="like-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="item-info">
+                        <h3 class="item-title">귀여운 고양이 이모티콘</h3>
+                        <p class="item-price">₩3,000</p>
+                        <div class="item-stats">
+                            <span class="stat">❤️ 128</span>
+                        </div>
                     </div>
                 </div>
 
                 <div class="gallery-item" data-category="emoticon">
-                    <img src="images/emoticon-2.jpg" alt="Emoticon 2">
-                    <div class="overlay">
-                        <h3>Emoticon 2</h3>
+                    <div class="item-image">
+                        <img src="images/emoticon-2.jpg" alt="감정 표현 이모티콘">
+                        <button class="like-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="item-info">
+                        <h3 class="item-title">감정 표현 이모티콘</h3>
+                        <p class="item-price">₩3,000</p>
+                        <div class="item-stats">
+                            <span class="stat">❤️ 95</span>
+                        </div>
                     </div>
                 </div>
 
                 <div class="gallery-item" data-category="calligraphy">
-                    <img src="images/calligraphy-1.jpg" alt="Calligraphy 1">
-                    <div class="overlay">
-                        <h3>Calligraphy 1</h3>
+                    <div class="item-image">
+                        <img src="images/calligraphy-1.jpg" alt="감성 캘리그라피">
+                        <button class="like-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="item-info">
+                        <h3 class="item-title">감성 캘리그라피</h3>
+                        <p class="item-price">₩5,000</p>
+                        <div class="item-stats">
+                            <span class="stat">❤️ 210</span>
+                        </div>
                     </div>
                 </div>
 
                 <div class="gallery-item" data-category="calligraphy">
-                    <img src="images/calligraphy-2.jpg" alt="Calligraphy 2">
-                    <div class="overlay">
-                        <h3>Calligraphy 2</h3>
+                    <div class="item-image">
+                        <img src="images/calligraphy-2.jpg" alt="손글씨 디자인">
+                        <button class="like-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="item-info">
+                        <h3 class="item-title">손글씨 디자인</h3>
+                        <p class="item-price">₩5,000</p>
+                        <div class="item-stats">
+                            <span class="stat">❤️ 156</span>
+                        </div>
                     </div>
                 </div>
 
                 <div class="gallery-item" data-category="emoticon">
-                    <img src="images/emoticon-3.jpg" alt="Emoticon 3">
-                    <div class="overlay">
-                        <h3>Emoticon 3</h3>
+                    <div class="item-image">
+                        <img src="images/emoticon-3.jpg" alt="동물 친구들 이모티콘">
+                        <button class="like-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="item-info">
+                        <h3 class="item-title">동물 친구들 이모티콘</h3>
+                        <p class="item-price">₩3,000</p>
+                        <div class="item-stats">
+                            <span class="stat">❤️ 189</span>
+                        </div>
                     </div>
                 </div>
 
                 <div class="gallery-item" data-category="calligraphy">
-                    <img src="images/calligraphy-3.jpg" alt="Calligraphy 3">
-                    <div class="overlay">
-                        <h3>Calligraphy 3</h3>
+                    <div class="item-image">
+                        <img src="images/calligraphy-3.jpg" alt="따뜻한 말 한마디">
+                        <button class="like-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="item-info">
+                        <h3 class="item-title">따뜻한 말 한마디</h3>
+                        <p class="item-price">₩5,000</p>
+                        <div class="item-stats">
+                            <span class="stat">❤️ 243</span>
+                        </div>
                     </div>
                 </div>
             </div>
