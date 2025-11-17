@@ -5,7 +5,7 @@
 ## 특징
 
 - 크리에이터 프로필 섹션 (배너, 프로필 사진, 팔로우 버튼)
-- OGQ 마켓 스타일의 작품 카드 (가격, 좋아요 표시)
+- 깔끔한 작품 카드 (작품 설명, 좋아요 표시)
 - 작품 카테고리별 필터링 (이모티콘, 캘리그라피)
 - Lightbox로 작품 크게 보기
 - 반응형 디자인 (모바일/태블릿/PC 지원)
@@ -45,7 +45,7 @@ images/
     </div>
     <div class="item-info">
         <h3 class="item-title">작품 제목</h3>
-        <p class="item-price">₩3,000</p>
+        <p class="item-description">작품에 대한 간단한 설명</p>
         <div class="item-stats">
             <span class="stat">❤️ 128</span>
         </div>
