@@ -4,6 +4,8 @@ import type { TrackType } from './types/editor'
 import { activeVideo, canSplitClip } from './engine/timeline'
 import { useTimelinePlayback } from './engine/useTimelinePlayback'
 import { TimelineClip } from './components/TimelineClip'
+import { PreviewTextLayer } from './components/PreviewTextLayer'
+import { TextProperties } from './components/TextProperties'
 
 const trackLabel: Record<TrackType, string> = {
   video: 'VIDEO',
@@ -23,9 +25,11 @@ const formatTime = (seconds: number) => {
 }
 
 export function App() {
-  const { project, selectedClipId, loadVideo, selectClip, splitSelectedClip, editClip, deleteSelectedClip } = useEditorStore()
+  const { project, selectedClipId, loadVideo, selectClip, splitSelectedClip, editClip, deleteSelectedClip, addText, past, future, undo, redo } = useEditorStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const trackLabelsRef = useRef<HTMLDivElement>(null)
+  const [assetTab, setAssetTab] = useState<'media' | 'text'>('media')
 
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [videoName, setVideoName] = useState<string | null>(null)
@@ -35,6 +39,9 @@ export function App() {
   const { isPlaying, visible, error, setError, pause, seekTo, togglePlayback, onSeeked } = useTimelinePlayback(videoRef, videoUrl)
   const selectedClip = project.tracks.flatMap(track => track.clips).find(clip => clip.id === selectedClipId)
   const canSplit = !!selectedClip && canSplitClip(selectedClip, project.currentTime, project.canvas.fps)
+  const textClips = project.tracks.flatMap(track => track.type === 'text' ? track.clips : [])
+  const selectedTextActive = !!selectedClip && project.currentTime >= selectedClip.start && project.currentTime < selectedClip.start + selectedClip.duration
+  const trackHeight = (type: TrackType, count: number) => type === 'text' ? Math.max(58, count * 48 + 10) : 58
   const hasActiveVideo = !!activeVideo(project.tracks, project.currentTime)
   const timelineWidth = Math.max((project.duration + 10) * pxPerSecond, 720)
   const playheadLeft = project.currentTime * pxPerSecond
@@ -94,10 +101,21 @@ export function App() {
     deleteSelectedClip(closeGap)
   }
 
+  const addCaption = () => { pause(); addText(); setAssetTab('text') }
+  const historyAction = (action: 'undo' | 'redo') => { pause(); if (action === 'undo') undo(); else redo() }
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement
-      if (target.closest('input, textarea, select, button, [contenteditable="true"]')) return
+      if (event.isComposing || target.closest('input, textarea, select, [contenteditable="true"]')) return
+      if ((event.ctrlKey || event.metaKey) && ['z', 'y'].includes(event.key.toLowerCase())) {
+        event.preventDefault(); pause()
+        const redoKey = event.key.toLowerCase() === 'y' || event.shiftKey
+        const state = useEditorStore.getState()
+        if (redoKey) state.redo(); else state.undo()
+        return
+      }
+      if (target.closest('button')) return
       if (event.key === 'Delete' || event.key === 'Backspace') {
         event.preventDefault()
         pause()
@@ -116,8 +134,8 @@ export function App() {
           <span className="project-name">{project.name}</span>
         </div>
         <div className="topbar-actions">
-          <button className="button ghost" disabled title="준비 중">Undo</button>
-          <button className="button ghost" disabled title="준비 중">Redo</button>
+          <button className="button ghost" disabled={past.length === 0} title="실행 취소 (Ctrl/Cmd+Z)" onClick={() => historyAction('undo')}>Undo</button>
+          <button className="button ghost" disabled={future.length === 0} title="다시 실행 (Ctrl+Y / Ctrl/Cmd+Shift+Z)" onClick={() => historyAction('redo')}>Redo</button>
           <button className="button primary" disabled title="준비 중">Export</button>
         </div>
       </header>
@@ -144,13 +162,23 @@ export function App() {
           </button>
 
           <nav className="asset-tabs">
-            <button className="active">미디어</button>
-            <button disabled>텍스트</button>
+            <button className={assetTab === 'media' ? 'active' : ''} onClick={() => setAssetTab('media')}>미디어</button>
+            <button className={assetTab === 'text' ? 'active' : ''} onClick={() => setAssetTab('text')}>텍스트</button>
             <button disabled>오디오</button>
             <button disabled>스티커</button>
           </nav>
 
-          {videoName ? (
+          {assetTab === 'text' ? (
+            <div className="text-library">
+              <button className="button primary add-text" onClick={addCaption}>＋ 텍스트 추가</button>
+              <p className="panel-hint">현재 재생 헤드 위치에 자막을 추가합니다.</p>
+              {textClips.map(clip => <button className={`media-card${clip.id === selectedClipId ? ' active' : ''}`} key={clip.id}
+                onClick={() => { pause(); selectClip(clip.id); seekTo(clip.start) }}>
+                <span className="media-thumb">T</span>
+                <span className="media-info"><strong>{clip.name}</strong><small>{formatTime(clip.start)} · {clip.duration.toFixed(1)}초</small></span>
+              </button>)}
+            </div>
+          ) : videoName ? (
             <button
               className="media-card"
               onClick={() => seekTo(0)}
@@ -191,13 +219,14 @@ export function App() {
                   onSeeked={onSeeked}
                   onError={() => { pause(); setError('이 영상은 브라우저에서 재생할 수 없습니다. 다른 MP4/WebM을 선택하세요.') }}
                 />
-              ) : (
+              ) : textClips.length === 0 ? (
                 <div className="canvas-copy">
                   <span className="eyebrow">Instagram Reel</span>
                   <h1>영상 추가</h1>
                   <p>로컬 MP4를 올려 편집을 시작하세요.</p>
                 </div>
-              )}
+              ) : null}
+              <PreviewTextLayer project={project} selectedClipId={selectedClipId} onPause={pause} />
             </div>
           </div>
 
@@ -206,7 +235,7 @@ export function App() {
             <button
               className="play"
               onClick={togglePlayback}
-              disabled={!videoUrl || project.duration <= 0 || videoDuration <= 0 || !!error}
+              disabled={project.duration <= 0 || (!!videoUrl && (videoDuration <= 0 || !!error))}
               aria-label={isPlaying ? 'pause' : 'play'}
             >
               {isPlaying ? 'Ⅱ' : '▶'}
@@ -226,11 +255,19 @@ export function App() {
               <dl>
                 <dt>타임라인 시작</dt><dd>{selectedClip.start.toFixed(2)}초</dd>
                 <dt>사용 길이</dt><dd>{selectedClip.duration.toFixed(2)}초</dd>
-                <dt>원본 시작</dt><dd>{(selectedClip.sourceStart ?? 0).toFixed(2)}초</dd>
-                <dt>원본 끝</dt><dd>{((selectedClip.sourceStart ?? 0) + selectedClip.duration).toFixed(2)}초</dd>
+                {selectedClip.type === 'video' && <>
+                  <dt>원본 시작</dt><dd>{(selectedClip.sourceStart ?? 0).toFixed(2)}초</dd>
+                  <dt>원본 끝</dt><dd>{((selectedClip.sourceStart ?? 0) + selectedClip.duration).toFixed(2)}초</dd>
+                </>}
               </dl>
             </div>
           ) : <p className="panel-hint">클립을 선택하면 편집 구간이 표시됩니다.</p>}
+          {selectedClip?.text && <>
+            {!selectedTextActive && <div className="caption-notice">현재 시각에는 이 자막이 표시되지 않습니다.
+              <button className="button ghost" onClick={() => seekTo(selectedClip.start)}>자막 시작으로 이동</button>
+            </div>}
+            <TextProperties key={selectedClip.id} clip={selectedClip} onPause={pause} />
+          </>}
           <p className="panel-hint">클립을 드래그해 이동하고, 양쪽 가장자리로 구간을 조절하세요.</p>
           <p className="panel-hint">방향키: 1프레임 이동 · Shift: 10프레임<br />Alt + 드래그: 스냅 해제</p>
         </aside>
@@ -252,7 +289,7 @@ export function App() {
             <button className="button ghost" disabled={!selectedClipId} title="선택 클립 삭제 후 같은 트랙의 뒤 클립을 당김 (Shift+Delete)" onClick={() => deleteClip(true)}>
               삭제 + 당기기
             </button>
-            <span className="timeline-hint">빈 구간은 검은 화면으로 재생됩니다.</span>
+            <span className="timeline-hint">영상이 없는 구간은 검은 배경에 자막만 표시됩니다.</span>
           </div>
           <div className="zoom-control">
             <span>Timeline</span>
@@ -267,16 +304,16 @@ export function App() {
         </div>
 
         <div className="timeline-body">
-          <div className="track-labels">
+          <div className="track-labels" ref={trackLabelsRef}>
             <div className="ruler-spacer" />
             {project.tracks.map((track) => (
-              <div className="track-label" key={track.id}>
+              <div className="track-label" key={track.id} style={{ height: trackHeight(track.type, track.clips.length) }}>
                 {trackLabel[track.type]}
               </div>
             ))}
           </div>
 
-          <div className="timeline-scroll" ref={timelineScrollRef}>
+          <div className="timeline-scroll" ref={timelineScrollRef} onScroll={event => { if (trackLabelsRef.current) trackLabelsRef.current.scrollTop = event.currentTarget.scrollTop }}>
             <div
               className="timeline-content"
               style={{ width: timelineWidth }}
@@ -299,12 +336,13 @@ export function App() {
               </div>
 
               {project.tracks.map((track) => (
-                <div className="track-row" key={track.id}>
-                  {track.clips.map((clip) => (
+                <div className="track-row" key={track.id} style={{ height: trackHeight(track.type, track.clips.length) }}>
+                  {track.clips.map((clip, index) => (
                     <TimelineClip
                       key={clip.id}
                       clip={clip}
                       clips={track.clips}
+                      top={track.type === 'text' ? 8 + index * 48 : 8}
                       selected={selectedClipId === clip.id}
                       fps={project.canvas.fps}
                       pxPerSecond={pxPerSecond}

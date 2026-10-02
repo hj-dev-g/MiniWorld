@@ -1,5 +1,18 @@
 export type TrackType = 'video' | 'audio' | 'text' | 'image'
 
+export interface TextStyle {
+  value: string
+  fontFamily: 'system-ui' | 'Malgun Gothic' | 'Arial' | 'Georgia' | 'monospace'
+  fontSize: number
+  color: string
+  align: 'left' | 'center' | 'right'
+  bold: boolean
+  shadow: boolean
+  /** Center position in original canvas pixels. */
+  x: number
+  y: number
+}
+
 export interface Clip {
   id: string
   name: string
@@ -10,6 +23,7 @@ export interface Clip {
   sourceDuration?: number
   /** Original media length; retained when splitting/trimming. */
   sourceLength?: number
+  text?: TextStyle
 }
 
 export interface Track {
