@@ -16,6 +16,10 @@
 - 영상 재생 시간과 Timeline Playhead 동기화
 - Timeline 클릭 Seek
 - 업로드 영상 길이로 Timeline 자동 갱신
+- Clip 선택 상태
+- Playhead 기준 Clip Split
+- Timeline Zoom
+- GitHub Actions production build 검증
 - 1080x1920 / 30fps 기본 프로젝트 모델
 
 ## 실행
@@ -28,13 +32,11 @@ npm run dev
 
 ## 다음 구현 순서
 
-1. Timeline clip 선택
-2. Clip drag
-3. Trim handles
-4. Split
-5. Delete
-6. Text overlay
-7. Image overlay
-8. Audio track
-9. Undo / Redo
-10. MP4 export
+1. Clip drag
+2. Trim handles
+3. Delete + gap 처리
+4. Text overlay
+5. Image overlay
+6. Audio track
+7. Undo / Redo
+8. MP4 export
