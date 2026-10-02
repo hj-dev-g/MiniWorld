@@ -46,6 +46,7 @@ export function restoreSaved(saved: unknown): ProjectBundle {
     for (const c of track.clips.sort((a,b) => a.start - b.start)) {
       if (ids.has(c.id) || c.type !== track.type || c.start + c.duration > 86400) throw new Error('클립 구성이 올바르지 않습니다.')
       ids.add(c.id)
+      if ((c.type !== 'text' && c.text) || (c.type !== 'image' && c.image) || (c.type !== 'video' && c.videoAssetId) || (c.type !== 'audio' && c.audioAssetId)) throw new Error('클립 종류와 편집 설정이 일치하지 않습니다.')
       if (c.type === 'text' && !c.text) throw new Error('자막 데이터가 누락되었습니다.')
       if (c.type !== 'text') {
         const asset = assetMap.get(c.type === 'video' ? c.videoAssetId ?? '' : c.type === 'audio' ? c.audioAssetId ?? '' : c.image?.assetId ?? '')

@@ -59,6 +59,9 @@ describe('portable projects and validated restore', () => {
     const invalid = structuredClone(original)
     invalid.manifest.project.tracks[0].clips[0].sourceStart = 8
     expect(()=>restoreSaved(invalid)).toThrow('범위')
+    const mismatched = structuredClone(original)
+    mismatched.manifest.project.tracks[0].clips[0].text = mismatched.manifest.project.tracks.find(t=>t.type==='text')!.clips[0].text
+    expect(()=>restoreSaved(mismatched)).toThrow('일치')
     const before = state().project
     await expect(readProject(new File(['bad'],'bad.miniworld'))).rejects.toThrow()
     expect(state().project).toBe(before)

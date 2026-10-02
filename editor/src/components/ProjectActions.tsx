@@ -38,7 +38,7 @@ export function ProjectActions({ready, status, onPause}: {ready:boolean; status:
     finally { setExporting(false); controller.current = null }
   }
   return <>
-    <span className="save-status" role="status">{status}</span>
+    <span className="save-status" role="status" title={status}>{status}</span>
     <input ref={input} className="file-input" type="file" accept=".miniworld" disabled={!ready || busy || exporting} onChange={event => {const file = event.target.files?.[0]; event.target.value = ''; if(file) void load(file)}} />
     <button className="button ghost" disabled={!ready || busy || exporting} onClick={() => input.current?.click()}>불러오기</button>
     <button className="button ghost" disabled={!ready || busy || exporting} onClick={() => void save()}>프로젝트 저장</button>

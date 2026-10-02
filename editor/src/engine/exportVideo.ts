@@ -42,6 +42,7 @@ export async function exportVideo(bundle: ProjectBundle, height: 1280 | 1920, si
   if (!await canEncodeVideo('avc',{width,height,bitrate:height === 1280 ? 4_000_000 : 8_000_000,frameRate:fps})) throw new Error('이 브라우저는 MP4 인코딩을 지원하지 않습니다. 최신 Chrome 또는 Edge에서 내보내세요.')
   const inputs = new Map<string, Input>()
   const sinks = new Map<string, CanvasSink>()
+  const firstFrames = new Map<string, number>()
   const images = new Map<string, ImageBitmap>()
   let output: Output | undefined
   let finished = false
@@ -61,6 +62,7 @@ export async function exportVideo(bundle: ProjectBundle, height: 1280 | 1920, si
       const track = await getInput(asset.id,asset.file).getPrimaryVideoTrack()
       if (!track || !await track.canDecode()) throw new Error(`${asset.name}: 내보내기에 지원하지 않는 영상 코덱입니다.`)
       sinks.set(asset.id,new CanvasSink(track,{poolSize:1}))
+      firstFrames.set(asset.id,await track.getFirstTimestamp())
     }
     for (const clip of clips.filter(c => c.image)) {
       check(); const asset = bundle.imageAssets[clip.image!.assetId]
@@ -113,7 +115,7 @@ export async function exportVideo(bundle: ProjectBundle, height: 1280 | 1920, si
       ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha = 1; ctx.fillStyle = '#000'; ctx.fillRect(0,0,width,height)
       const clip = activeVideo(project.tracks,time)
       if (clip) {
-        const decoded = await sinks.get(clip.videoAssetId!)!.getCanvas(sourceTime(clip,time)); check()
+        const decoded = await sinks.get(clip.videoAssetId!)!.getCanvas(Math.max(firstFrames.get(clip.videoAssetId!) ?? 0,sourceTime(clip,time))); check()
         if (decoded) {
           const scale = Math.min(width/decoded.canvas.width,height/decoded.canvas.height)
           const w = decoded.canvas.width*scale; const h = decoded.canvas.height*scale

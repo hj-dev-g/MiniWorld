@@ -4,11 +4,12 @@ import { captureProject, restoreSaved } from './projectFiles'
 
 const open = () => new Promise<IDBDatabase>((resolve,reject) => {
   const request = indexedDB.open('miniworld-editor', 2)
+  let blocked = false
   request.onupgradeneeded = () => {
     if (!request.result.objectStoreNames.contains('projects')) request.result.createObjectStore('projects')
     if (!request.result.objectStoreNames.contains('assets')) request.result.createObjectStore('assets')
   }
-  request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error)
+  request.onsuccess = () => { if (blocked) { request.result.close(); return }; request.result.onversionchange = () => request.result.close(); resolve(request.result) }; request.onblocked = () => { blocked = true; reject(new Error('다른 편집기 탭을 닫고 다시 열어주세요.')) }; request.onerror = () => reject(request.error)
 })
 const load = (db: IDBDatabase) => new Promise<{saved: unknown; files: Map<string, Blob>}>((resolve,reject) => {
   const transaction = db.transaction(['projects','assets'])
@@ -36,11 +37,18 @@ export function useProjectStorage() {
   const [status, setStatus] = useState('프로젝트 복원 중…')
   useEffect(() => {
     let active = true; let db: IDBDatabase | undefined; let unsubscribe = () => {}; let timer: ReturnType<typeof setTimeout> | undefined
+    let writable = false; let releaseWriter = () => {}; let unavailable = '자동 저장을 사용할 수 없습니다 · 파일 저장 가능'
+    const acquireWriter = () => navigator.locks ? new Promise<boolean>((resolve,reject) => {
+      void navigator.locks.request('miniworld-editor-autosave', {mode:'exclusive',ifAvailable:true}, lock => {
+        if (!lock || !active) { resolve(false); return }
+        return new Promise<void>(release => { releaseWriter = release; resolve(true) })
+      }).catch(reject)
+    }) : Promise.resolve(true)
     let queue = Promise.resolve(); let revision = 0; let stored = new Map<string, Blob>()
     const persist = () => {
       clearTimeout(timer)
       if (!active) return
-      if (!db) { setStatus('자동 저장을 사용할 수 없습니다 · 파일 저장 가능'); return }
+      if (!db || !writable) { setStatus(unavailable); return }
       const epoch = revision
       try {
         const bundle = captureProject(useEditorStore.getState())
@@ -52,11 +60,13 @@ export function useProjectStorage() {
     void (async () => {
       try {
         db = await open()
+        writable = await acquireWriter()
+        if (!writable) unavailable = '다른 탭 편집 중 · 이 탭은 파일 저장만 가능'
         const loaded = await load(db); const saved = loaded.saved; stored = loaded.files
-        if (!active) { db.close(); return }
+        if (!active) { db.close(); releaseWriter(); return }
         if (saved) useEditorStore.getState().restoreProject(restoreSaved(saved))
-        setStatus(saved ? '저장된 프로젝트 복원됨' : '자동 저장 준비됨')
-      } catch { if (active) setStatus('자동 저장을 사용할 수 없습니다 · 파일 저장 가능') }
+        setStatus(!writable ? unavailable : saved ? '저장된 프로젝트 복원됨' : '자동 저장 준비됨')
+      } catch (error) { if (active) setStatus(error instanceof Error && error.message.includes('다른 편집기') ? error.message : '자동 저장을 사용할 수 없습니다 · 파일 저장 가능') }
       if (!active) return
       setReady(true)
       let previous = useEditorStore.getState()
@@ -64,11 +74,12 @@ export function useProjectStorage() {
         const changed = state.project.tracks !== previous.project.tracks || state.project.name !== previous.project.name || state.videoAssets !== previous.videoAssets || state.audioAssets !== previous.audioAssets || state.imageAssets !== previous.imageAssets || state.mediaRevision !== previous.mediaRevision
         previous = state
         if (!changed) return
+        if (!writable) { setStatus(unavailable); return }
         revision++; setStatus('변경 사항 저장 대기…'); clearTimeout(timer); timer = setTimeout(persist,500)
       })
       document.addEventListener('visibilitychange',hidden)
     })()
-    return () => { active = false; clearTimeout(timer); unsubscribe(); document.removeEventListener('visibilitychange',hidden); void queue.finally(() => db?.close()) }
+    return () => { active = false; clearTimeout(timer); unsubscribe(); document.removeEventListener('visibilitychange',hidden); void queue.finally(() => { db?.close(); releaseWriter() }) }
   }, [])
   return {ready, status}
 }
