@@ -1,9 +1,33 @@
 export type TrackType = 'video' | 'audio' | 'text' | 'image'
 
+export interface VideoAsset {
+  id: string
+  name: string
+  url: string
+  file?: Blob
+  duration: number
+  width: number
+  height: number
+}
+
+export interface AudioAsset {
+  id: string
+  name: string
+  url: string
+  file?: Blob
+  duration: number
+}
+
+export interface SoundStyle {
+  volume: number
+  muted: boolean
+}
+
 export interface ImageAsset {
   id: string
   name: string
   url: string
+  file?: Blob
   width: number
   height: number
 }
@@ -40,6 +64,9 @@ export interface Clip {
   sourceDuration?: number
   /** Original media length; retained when splitting/trimming. */
   sourceLength?: number
+  videoAssetId?: string
+  audioAssetId?: string
+  sound?: SoundStyle
   text?: TextStyle
   image?: ImageStyle
 }
@@ -61,4 +88,11 @@ export interface EditorProject {
   duration: number
   currentTime: number
   tracks: Track[]
+}
+
+export interface ProjectBundle {
+  project: EditorProject
+  videoAssets: Record<string, VideoAsset>
+  audioAssets: Record<string, AudioAsset>
+  imageAssets: Record<string, ImageAsset>
 }

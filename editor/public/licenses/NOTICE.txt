@@ -1,0 +1,28 @@
+MiniWorld Editor — third-party software notices
+
+React / React DOM (Meta and contributors): MIT
+https://github.com/facebook/react
+Zustand (Poimandres contributors): MIT
+https://github.com/pmndrs/zustand
+fflate (Arjun Barrett): MIT
+https://github.com/101arrowz/fflate
+Zod (Colin McDonnell and contributors): MIT
+https://github.com/colinhacks/zod
+
+Mediabunny 1.61.0 and @mediabunny/aac-encoder 1.61.0
+Copyright (c) 2026-present, Vanilagy and contributors.
+Licensed under the Mozilla Public License 2.0. Unmodified source and build instructions:
+https://www.npmjs.com/package/mediabunny/v/1.61.0
+https://www.npmjs.com/package/@mediabunny/aac-encoder/v/1.61.0
+https://github.com/Vanilagy/mediabunny/tree/main/packages/aac-encoder
+
+The optional AAC encoder includes FFmpeg's libavcodec/libavutil in WebAssembly.
+FFmpeg is licensed under the GNU Lesser General Public License 2.1 or later.
+Source and AAC encoder build instructions:
+https://github.com/FFmpeg/FFmpeg
+https://ffmpeg.org/legal.html
+https://github.com/Vanilagy/mediabunny/tree/main/packages/aac-encoder
+The dependency is unmodified and loaded as a separate module.
+
+License texts are included in this directory.
+No sample music, CapCut templates, branding, or third-party reel media is bundled.

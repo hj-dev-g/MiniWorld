@@ -41,8 +41,8 @@ export function useImageImports() {
           await image.decode()
           if (!mounted.current || useEditorStore.getState().mediaRevision !== revision) { release(url); break }
           if (!image.naturalWidth || !image.naturalHeight) throw new Error('Empty image')
-          useEditorStore.getState().addImage({ id: crypto.randomUUID(), name: file.name, url, width: image.naturalWidth, height: image.naturalHeight })
-          pending.current.delete(url)
+          useEditorStore.getState().addImage({ id: crypto.randomUUID(), name: file.name, file, url, width: image.naturalWidth, height: image.naturalHeight })
+          pending.current.delete(url); owned.current.delete(url)
         } catch {
           release(url)
           if (mounted.current && useEditorStore.getState().mediaRevision === revision) setError(`${file.name}: 이미지를 읽을 수 없습니다.`)
