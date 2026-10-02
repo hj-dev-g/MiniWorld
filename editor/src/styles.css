@@ -502,3 +502,43 @@ button {
   outline-offset: 1px;
   z-index: 2;
 }
+
+.phone-canvas { background: #000; }
+.preview-stage { position: relative; }
+.media-error {
+  position: absolute;
+  top: 8px;
+  left: 16px;
+  right: 16px;
+  z-index: 5;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #512b34;
+  color: #ffe0e6;
+  font-size: 12px;
+}
+.clip { cursor: grab; user-select: none; touch-action: none; padding: 0 12px; }
+.clip.editing { cursor: grabbing; opacity: .85; z-index: 3; }
+.clip:focus-visible { outline: 2px solid #a99bff; }
+.clip-name { overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.trim-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  cursor: ew-resize;
+  background: rgba(255,255,255,.28);
+  touch-action: none;
+}
+.trim-start { left: 0; }
+.trim-end { right: 0; }
+.trim-handle:hover, .trim-handle:focus-visible { background: #fff; }
+.panel-hint, .timeline-hint { font-size: 11px; color: #8d919b; line-height: 1.8; }
+.clip-properties strong { display: block; font-size: 13px; overflow-wrap: anywhere; }
+.clip-properties dl { display: grid; grid-template-columns: 1fr auto; gap: 10px; font-size: 12px; }
+.clip-properties dt { color: #8d919b; }
+.clip-properties dd { margin: 0; font-variant-numeric: tabular-nums; }
+.asset-tabs button:disabled { opacity: .4; cursor: not-allowed; }

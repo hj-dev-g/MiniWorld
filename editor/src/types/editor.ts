@@ -8,6 +8,8 @@ export interface Clip {
   duration: number
   sourceStart?: number
   sourceDuration?: number
+  /** Original media length; retained when splitting/trimming. */
+  sourceLength?: number
 }
 
 export interface Track {
