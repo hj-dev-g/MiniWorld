@@ -485,3 +485,20 @@ button {
   opacity: 0.35;
   cursor: not-allowed;
 }
+
+
+.button:disabled,
+.clip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.clip {
+  cursor: pointer;
+}
+
+.clip.selected {
+  outline: 2px solid #f2f3f5;
+  outline-offset: 1px;
+  z-index: 2;
+}
