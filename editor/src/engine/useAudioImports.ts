@@ -48,8 +48,8 @@ export function useAudioImports() {
         try {
           const duration = await readAudioDuration(url, abort.signal)
           if (!mounted.current || abort.signal.aborted || useEditorStore.getState().mediaRevision !== epoch) { release(url); break }
-          useEditorStore.getState().addAudio({ id: crypto.randomUUID(), name: file.name, url, duration })
-          pending.current.delete(url)
+          useEditorStore.getState().addAudio({ id: crypto.randomUUID(), name: file.name, file, url, duration })
+          pending.current.delete(url); owned.current.delete(url)
         } catch {
           release(url)
           if (mounted.current && !abort.signal.aborted && useEditorStore.getState().mediaRevision === epoch) setError(`${file.name}: 재생 가능한 오디오를 읽을 수 없습니다.`)

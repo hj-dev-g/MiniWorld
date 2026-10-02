@@ -609,3 +609,17 @@ button {
 .preview-text:not(.show-bounds) { outline: none; }
 .preview-guide-toggle { border: 1px solid #30333b; border-radius: 6px; padding: 5px 9px; background: #1b1d22; color: #9ca0aa; font-size: 11px; cursor: pointer; }
 .preview-guide-toggle[aria-pressed="true"] { border-color: #a99bff; color: #fff; background: #38314d; }
+.project-title { background: transparent; color: inherit; border: 1px solid transparent; border-radius: 5px; padding: 4px; width: 160px; }
+.project-title:focus { border-color: #a99bff; outline: none; }
+.save-status { font-size: 11px; color: #adb2c9; max-width: 135px; }
+.project-message { position: fixed; bottom: 20px; right: 20px; z-index: 120; background: #292d3e; border: 1px solid #78718e; border-radius: 8px; padding: 14px; max-width: 500px; font-size: 14px; }
+.project-message button { margin-left: 14px; color: white; background: none; border: none; cursor: pointer; }
+.modal-backdrop { position: fixed; inset: 0; background: #0009; z-index: 100; display: grid; place-items: center; }
+.export-dialog { background: #1d2130; border: 1px solid #454b64; width: 460px; padding: 28px; border-radius: 14px; font-size: 14px; }
+.export-dialog h2 { margin-top: 0; }
+.export-dialog label { display: flex; justify-content: space-between; align-items: center; margin: 24px 0; }
+.export-dialog select { padding: 10px; color: white; background: #2f344b; border: 1px solid #59617e; border-radius: 6px; }
+.export-dialog progress { width: 100%; accent-color: #a99bff; }
+.dialog-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
+.loading-project { position: fixed; inset: 0; z-index: 200; background: #151821e8; display: grid; place-items: center; }
+.licenses-link { color: #adb2c9; font-size: 11px; }

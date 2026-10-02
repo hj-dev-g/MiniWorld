@@ -7,6 +7,8 @@ export function useTimelinePlayback(videoRef: RefObject<HTMLVideoElement | null>
   const { project, setCurrentTime } = useEditorStore()
   const [isPlaying, setIsPlaying] = useState(false)
   const [visible, setVisible] = useState(false)
+  const [mediaReady, setMediaReady] = useState(0)
+  const revision = useEditorStore(s => s.mediaRevision)
   const [error, setError] = useState<string | null>(null)
   const playing = useRef(false)
   const anchor = useRef({ time: 0, wall: 0 })
@@ -29,7 +31,9 @@ export function useTimelinePlayback(videoRef: RefObject<HTMLVideoElement | null>
     activeId.current = null
     setVisible(false)
     setError(null)
-  }, [videoUrl, pause])
+  }, [revision, pause])
+
+  useEffect(() => { activeId.current = null; setVisible(false); setError(null) }, [videoUrl])
 
   useEffect(() => {
     if (!isPlaying) return
@@ -77,7 +81,7 @@ export function useTimelinePlayback(videoRef: RefObject<HTMLVideoElement | null>
         pause()
       }).finally(() => { playPending.current = false })
     } else if (!isPlaying) video.pause()
-  }, [project.currentTime, project.tracks, project.canvas.fps, isPlaying, videoRef, videoUrl, pause])
+  }, [project.currentTime, project.tracks, project.canvas.fps, isPlaying, videoRef, videoUrl, pause, mediaReady])
 
   const onSeeked = () => {
     const video = videoRef.current
@@ -99,5 +103,5 @@ export function useTimelinePlayback(videoRef: RefObject<HTMLVideoElement | null>
     setIsPlaying(true)
   }
 
-  return { isPlaying, visible, error, setError, pause, seekTo, togglePlayback, onSeeked }
+  return { onLoadedMetadata: () => setMediaReady(v => v + 1), isPlaying, visible, error, setError, pause, seekTo, togglePlayback, onSeeked }
 }
