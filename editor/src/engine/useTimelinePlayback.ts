@@ -90,7 +90,7 @@ export function useTimelinePlayback(videoRef: RefObject<HTMLVideoElement | null>
   const togglePlayback = () => {
     if (playing.current) { pause(); return }
     const current = useEditorStore.getState().project
-    if (!videoUrl || current.duration <= 0) return
+    if (current.duration <= 0) return
     if (current.currentTime >= current.duration) seekTo(0)
     setError(null)
     playing.current = true

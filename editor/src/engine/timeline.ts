@@ -33,6 +33,8 @@ export function editClip(
 ): Clip {
   if (!Number.isFinite(target)) return clip
   const others = clips.filter(other => other.id !== clip.id)
+  // Independent text/image overlays may be visible at the same time.
+  const blocking = clip.type === 'text' || clip.type === 'image' ? [] : others
   const targets = [0, ...others.flatMap(other => [other.start, clipEnd(other)])]
   if (playhead !== undefined) targets.push(playhead)
   const frameTarget = toFrame(target, fps)
@@ -41,18 +43,18 @@ export function editClip(
 
   if (mode === 'move') {
     const snapped = snap(frameTarget, [...targets, ...targets.map(t => t - clip.duration)], tolerance)
-    const fits = (start: number) => start >= 0 && others.every(other =>
+    const fits = (start: number) => start >= 0 && blocking.every(other =>
       start + clip.duration <= other.start + EPSILON || start >= clipEnd(other) - EPSILON)
     const desired = Math.max(0, snapped)
-    const candidates = [desired, 0, ...others.flatMap(other =>
+    const candidates = [desired, 0, ...blocking.flatMap(other =>
       [clipEnd(other), other.start - clip.duration])].filter(fits)
     const start = candidates.reduce((best, value) =>
       Math.abs(value - desired) < Math.abs(best - desired) ? value : best, clip.start)
     return { ...clip, start }
   }
 
-  const previousEnd = Math.max(0, ...others.filter(other => clipEnd(other) <= clip.start + EPSILON).map(clipEnd))
-  const nextStart = Math.min(Infinity, ...others.filter(other => other.start >= end - EPSILON).map(other => other.start))
+  const previousEnd = Math.max(0, ...blocking.filter(other => clipEnd(other) <= clip.start + EPSILON).map(clipEnd))
+  const nextStart = Math.min(Infinity, ...blocking.filter(other => other.start >= end - EPSILON).map(other => other.start))
   if (mode === 'trim-start') {
     const minStart = Math.max(previousEnd, clip.sourceStart === undefined ? 0 : clip.start - clip.sourceStart)
     const start = clamp(snap(frameTarget, targets, tolerance), minStart, end - minDuration)

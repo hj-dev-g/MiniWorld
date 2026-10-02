@@ -1,16 +1,35 @@
 import { create } from 'zustand'
 import { clipEnd, editClip, projectDuration, splitClip, type EditMode } from '../engine/timeline'
-import type { EditorProject, Track } from '../types/editor'
+import { constrainImage, fitImageSize, type ImagePatch } from '../engine/imageGeometry'
+import type { EditorProject, ImageAsset, TextStyle, Track } from '../types/editor'
 
-interface EditorState {
+interface Snapshot {
   project: EditorProject
   selectedClipId: string | null
+}
+
+interface EditorState extends Snapshot {
+  imageAssets: Record<string, ImageAsset>
+  mediaRevision: number
+  addImage: (asset: ImageAsset) => void
+  insertImage: (assetId: string) => void
+  updateImage: (clipId: string, patch: ImagePatch) => void
+  past: Snapshot[]
+  future: Snapshot[]
+  editBaseline: Snapshot | null
   setCurrentTime: (time: number) => void
   loadVideo: (name: string, duration: number) => void
   selectClip: (clipId: string) => void
   editClip: (clipId: string, mode: EditMode, target: number, tolerance?: number) => void
   splitSelectedClip: (time: number) => void
   deleteSelectedClip: (closeGap?: boolean) => void
+  addText: () => void
+  updateText: (clipId: string, patch: Partial<TextStyle>) => void
+  beginEdit: () => void
+  commitEdit: () => void
+  cancelEdit: () => void
+  undo: () => void
+  redo: () => void
 }
 
 const initialProject: EditorProject = {
@@ -20,27 +39,75 @@ const initialProject: EditorProject = {
   tracks: [
     { id: 'video-track', type: 'video', clips: [] },
     { id: 'text-track', type: 'text', clips: [] },
+    { id: 'image-track', type: 'image', clips: [] },
     { id: 'audio-track', type: 'audio', clips: [] },
   ],
 }
+
+const HISTORY_LIMIT = 100
+const snapshot = (state: Snapshot): Snapshot => ({ project: state.project, selectedClipId: state.selectedClipId })
+const sameContent = (a: EditorProject, b: EditorProject) =>
+  JSON.stringify([a.name, a.canvas, a.tracks]) === JSON.stringify([b.name, b.canvas, b.tracks])
 
 function withTracks(project: EditorProject, tracks: Track[]): EditorProject {
   const duration = projectDuration(tracks)
   return { ...project, tracks, duration, currentTime: Math.min(project.currentTime, duration) }
 }
 
+function restore(state: EditorState, saved: Snapshot): Snapshot {
+  return { ...saved, project: { ...saved.project,
+    currentTime: Math.min(state.project.currentTime, saved.project.duration),
+  } }
+}
+
+function finishEdit(state: EditorState): EditorState {
+  if (!state.editBaseline) return state
+  if (sameContent(state.editBaseline.project, state.project)) return { ...state, editBaseline: null }
+  return { ...state, editBaseline: null,
+    past: [...state.past, state.editBaseline].slice(-HISTORY_LIMIT), future: [],
+  }
+}
+
+function record(state: EditorState, project: EditorProject, selectedClipId = state.selectedClipId): EditorState {
+  if (sameContent(state.project, project)) return { ...state, selectedClipId }
+  if (state.editBaseline) return { ...state, project, selectedClipId }
+  return { ...state, project, selectedClipId,
+    past: [...state.past, snapshot(state)].slice(-HISTORY_LIMIT), future: [],
+  }
+}
+
+function insertImageClip(state: EditorState, asset: ImageAsset): EditorState {
+  const { canvas, currentTime, duration } = state.project
+  const start = Math.floor(currentTime * canvas.fps) / canvas.fps
+  const remaining = duration - start
+  const id = crypto.randomUUID()
+  const clip = {
+    id, name: asset.name, type: 'image' as const, start,
+    duration: remaining >= 1 / canvas.fps ? Math.min(3, remaining) : 3,
+    image: { assetId: asset.id, x: canvas.width / 2, y: canvas.height / 2, opacity: 1, ...fitImageSize(asset, canvas) },
+  }
+  const tracks = state.project.tracks.map(track => track.type !== 'image' ? track : {
+    ...track, clips: [...track.clips, clip].sort((a, b) => a.start - b.start),
+  })
+  return record(state, withTracks(state.project, tracks), id)
+}
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
+const fonts: TextStyle['fontFamily'][] = ['system-ui', 'Malgun Gothic', 'Arial', 'Georgia', 'monospace']
+
 export const useEditorStore = create<EditorState>((set) => ({
   project: initialProject,
-  selectedClipId: null,
-  setCurrentTime: (time) => set(state => Number.isFinite(time) ? {
-    project: { ...state.project, currentTime: Math.min(Math.max(time, 0), state.project.duration) },
+  selectedClipId: null, imageAssets: {}, mediaRevision: 0, past: [], future: [], editBaseline: null,
+  setCurrentTime: time => set(state => Number.isFinite(time) ? {
+    project: { ...state.project, currentTime: clamp(time, 0, state.project.duration) },
   } : state),
 
   loadVideo: (name, duration) => {
     if (!Number.isFinite(duration) || duration <= 0) return
     const id = crypto.randomUUID()
+    // The URL is owned by the UI. Clear history when replacing its media.
     set(state => ({
-      selectedClipId: id,
+      selectedClipId: id, imageAssets: {}, mediaRevision: state.mediaRevision + 1, past: [], future: [], editBaseline: null,
       project: { ...state.project, name, duration, currentTime: 0,
         tracks: state.project.tracks.map(track => ({ ...track,
           clips: track.type === 'video' ? [{
@@ -51,17 +118,104 @@ export const useEditorStore = create<EditorState>((set) => ({
       },
     }))
   },
-  selectClip: clipId => set({ selectedClipId: clipId }),
+  selectClip: clipId => set(state => clipId === state.selectedClipId
+    ? state : { ...finishEdit(state), selectedClipId: clipId }),
 
-  editClip: (clipId, mode, target, tolerance = 0) => set(state => ({
-    project: withTracks(state.project, state.project.tracks.map(track => ({ ...track,
+  beginEdit: () => set(state => state.editBaseline ? state : { editBaseline: snapshot(state) }),
+  commitEdit: () => set(finishEdit),
+  cancelEdit: () => set(state => state.editBaseline
+    ? { ...restore(state, state.editBaseline), editBaseline: null } : state),
+  undo: () => set(current => {
+    const state = finishEdit(current)
+    const saved = state.past.at(-1)
+    if (!saved) return state
+    return { ...state, ...restore(state, saved),
+      past: state.past.slice(0, -1), future: [...state.future, snapshot(state)].slice(-HISTORY_LIMIT),
+    }
+  }),
+  redo: () => set(current => {
+    const state = finishEdit(current)
+    const saved = state.future.at(-1)
+    if (!saved) return state
+    return { ...state, ...restore(state, saved),
+      past: [...state.past, snapshot(state)].slice(-HISTORY_LIMIT), future: state.future.slice(0, -1),
+    }
+  }),
+
+  addText: () => set(current => {
+    const state = finishEdit(current)
+    const { canvas, currentTime, duration } = state.project
+    const start = Math.floor(currentTime * canvas.fps) / canvas.fps
+    const remaining = duration - start
+    const id = crypto.randomUUID()
+    const text: TextStyle = {
+      value: '텍스트를 입력하세요', fontFamily: 'system-ui', fontSize: 72,
+      color: '#ffffff', align: 'center', bold: true, shadow: true,
+      x: canvas.width / 2, y: canvas.height * .8,
+    }
+    const tracks = state.project.tracks.map(track => track.type !== 'text' ? track : {
+      ...track, clips: [...track.clips, {
+        id, name: text.value, type: 'text' as const, start,
+        duration: remaining >= 1 / canvas.fps ? Math.min(3, remaining) : 3, text,
+      }].sort((a, b) => a.start - b.start),
+    })
+    return record(state, withTracks(state.project, tracks), id)
+  }),
+
+  addImage: asset => set(current => {
+    if (!asset.id || !asset.url || !Number.isFinite(asset.width) || !Number.isFinite(asset.height) || asset.width <= 0 || asset.height <= 0) return current
+    // Asset URLs remain outside snapshots so deleted/undone clips can reuse them.
+    if (current.imageAssets[asset.id]) return current
+    const state = { ...finishEdit(current), imageAssets: { ...current.imageAssets, [asset.id]: asset } }
+    return insertImageClip(state, asset)
+  }),
+  insertImage: assetId => set(current => {
+    const asset = current.imageAssets[assetId]
+    return asset ? insertImageClip(finishEdit(current), asset) : current
+  }),
+  updateImage: (clipId, patch) => set(state => {
+    const tracks = state.project.tracks.map(track => ({ ...track,
+      clips: track.clips.map(clip => {
+        const asset = clip.image && state.imageAssets[clip.image.assetId]
+        return clip.id === clipId && clip.image && asset
+          ? { ...clip, image: constrainImage(clip.image, patch, asset, state.project.canvas) } : clip
+      }),
+    }))
+    return record(state, withTracks(state.project, tracks))
+  }),
+
+  updateText: (clipId, patch) => set(state => {
+    const { width, height } = state.project.canvas
+    const safe: Partial<TextStyle> = {}
+    if (patch.value !== undefined) safe.value = patch.value.slice(0, 1000)
+    if (patch.fontFamily && fonts.includes(patch.fontFamily)) safe.fontFamily = patch.fontFamily
+    if (Number.isFinite(patch.fontSize)) safe.fontSize = clamp(patch.fontSize!, 12, 240)
+    if (patch.color && /^#[0-9a-f]{6}$/i.test(patch.color)) safe.color = patch.color
+    if (patch.align && ['left', 'center', 'right'].includes(patch.align)) safe.align = patch.align
+    if (typeof patch.bold === 'boolean') safe.bold = patch.bold
+    if (typeof patch.shadow === 'boolean') safe.shadow = patch.shadow
+    if (Number.isFinite(patch.x)) safe.x = clamp(patch.x!, 0, width)
+    if (Number.isFinite(patch.y)) safe.y = clamp(patch.y!, 0, height)
+    const tracks = state.project.tracks.map(track => ({ ...track,
+      clips: track.clips.map(clip => clip.id === clipId && clip.text ? {
+        ...clip, text: { ...clip.text, ...safe },
+        name: (safe.value ?? clip.text.value).trim().split('\n')[0].slice(0, 28) || '텍스트',
+      } : clip),
+    }))
+    return record(state, withTracks(state.project, tracks))
+  }),
+
+  editClip: (clipId, mode, target, tolerance = 0) => set(current => {
+    const state = finishEdit(current)
+    return record(state, withTracks(state.project, state.project.tracks.map(track => ({ ...track,
       clips: track.clips.map(clip => clip.id === clipId
         ? editClip(clip, track.clips, mode, target, state.project.canvas.fps, state.project.currentTime, tolerance)
         : clip).sort((a, b) => a.start - b.start),
-    }))),
-  })),
+    }))))
+  }),
 
-  splitSelectedClip: time => set(state => {
+  splitSelectedClip: time => set(current => {
+    const state = finishEdit(current)
     let selectedClipId = state.selectedClipId
     const tracks = state.project.tracks.map(track => ({ ...track,
       clips: track.clips.flatMap(clip => {
@@ -72,19 +226,19 @@ export const useEditorStore = create<EditorState>((set) => ({
         return pair
       }),
     }))
-    return { selectedClipId, project: withTracks(state.project, tracks) }
+    return record(state, withTracks(state.project, tracks), selectedClipId)
   }),
 
-  deleteSelectedClip: (closeGap = false) => set(state => {
+  deleteSelectedClip: (closeGap = false) => set(current => {
+    const state = finishEdit(current)
     const selected = state.project.tracks.flatMap(track => track.clips).find(clip => clip.id === state.selectedClipId)
     if (!selected) return state
-    // Ripple only the selected track; future overlays/audio stay at their authored times.
     const tracks = state.project.tracks.map(track => {
       if (!track.clips.some(clip => clip.id === selected.id)) return track
       return { ...track, clips: track.clips.filter(clip => clip.id !== selected.id).map(clip =>
         closeGap && clip.start >= clipEnd(selected)
           ? { ...clip, start: clip.start - selected.duration } : clip) }
     })
-    return { selectedClipId: null, project: withTracks(state.project, tracks) }
+    return record(state, withTracks(state.project, tracks), null)
   }),
 }))

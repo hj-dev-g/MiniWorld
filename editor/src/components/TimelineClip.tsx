@@ -5,6 +5,7 @@ import type { Clip } from '../types/editor'
 interface Props {
   clip: Clip
   clips: Clip[]
+  top?: number
   selected: boolean
   fps: number
   pxPerSecond: number
@@ -15,7 +16,7 @@ interface Props {
   onCommit: (mode: EditMode, target: number, tolerance: number) => void
 }
 
-export function TimelineClip({ clip, clips, selected, fps, pxPerSecond, playhead, scrollRef, onSelect, onBeginEdit, onCommit }: Props) {
+export function TimelineClip({ clip, clips, top = 8, selected, fps, pxPerSecond, playhead, scrollRef, onSelect, onBeginEdit, onCommit }: Props) {
   const gesture = useRef<{ mode: EditMode; x: number; scroll: number; original: Clip; moved: boolean } | null>(null)
   const [draft, setDraft] = useState<Clip | null>(null)
   const shown = draft ?? clip
@@ -74,7 +75,7 @@ export function TimelineClip({ clip, clips, selected, fps, pxPerSecond, playhead
   return (
     <div
       className={`clip clip-${clip.type}${selected ? ' selected' : ''}${draft ? ' editing' : ''}`}
-      style={{ left: shown.start * pxPerSecond, width: shown.duration * pxPerSecond }}
+      style={{ top, left: shown.start * pxPerSecond, width: shown.duration * pxPerSecond }}
       tabIndex={0}
       role="group"
       aria-label={`${clip.name} 클립`}
