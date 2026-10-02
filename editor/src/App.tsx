@@ -41,6 +41,7 @@ export function App() {
   const trackLabelsRef = useRef<HTMLDivElement>(null)
   const [assetTab, setAssetTab] = useState<'media' | 'text' | 'image' | 'audio'>('media')
 
+  const [showTextBounds, setShowTextBounds] = useState(false)
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [videoName, setVideoName] = useState<string | null>(null)
   const [pxPerSecond, setPxPerSecond] = useState(28)
@@ -242,6 +243,7 @@ export function App() {
             <span>9:16</span>
             <span>{project.canvas.width} × {project.canvas.height}</span>
             <span>{project.canvas.fps} FPS</span>
+            <button className="preview-guide-toggle" aria-pressed={showTextBounds} onClick={() => setShowTextBounds(value => !value)}>자막 선택 테두리</button>
           </div>
 
           <div className="preview-stage">
@@ -266,7 +268,7 @@ export function App() {
                   <p>로컬 MP4를 올려 편집을 시작하세요.</p>
                 </div>
               ) : null}
-              <PreviewOverlayLayer project={project} selectedClipId={selectedClipId} onPause={pause} />
+              <PreviewOverlayLayer project={project} selectedClipId={selectedClipId} showTextBounds={showTextBounds} onPause={pause} />
             </div>
           </div>
 

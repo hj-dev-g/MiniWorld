@@ -565,7 +565,7 @@ button {
   touch-action: none;
   pointer-events: auto;
 }
-.preview-text.selected { outline: 4px solid #a99bff; outline-offset: 4px; z-index: 2; }
+.preview-text.selected.show-bounds { outline: 4px solid #a99bff; outline-offset: 4px; z-index: 2; }
 .preview-text:focus-visible { outline-color: #fff; }
 .text-library { padding-top: 14px; }
 .add-text { width: 100%; }
@@ -605,3 +605,7 @@ button {
 .image-resize-handle { position: absolute; transform: translate(-50%, -50%); border: 0; padding: 0; background: #fff; touch-action: none; }
 .image-thumb { object-fit: contain; background: repeating-conic-gradient(#30333b 0% 25%, #202229 0% 50%) 50% / 12px 12px; }
 .image-error { padding: 10px; font-size: 12px; color: #ffe0e6; background: #512b34; border-radius: 7px; }
+
+.preview-text:not(.show-bounds) { outline: none; }
+.preview-guide-toggle { border: 1px solid #30333b; border-radius: 6px; padding: 5px 9px; background: #1b1d22; color: #9ca0aa; font-size: 11px; cursor: pointer; }
+.preview-guide-toggle[aria-pressed="true"] { border-color: #a99bff; color: #fff; background: #38314d; }
