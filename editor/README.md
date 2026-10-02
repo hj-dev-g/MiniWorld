@@ -1,42 +1,61 @@
 # MiniWorld Reels Editor
 
-브라우저 기반 Instagram Reels 편집기 프로토타입입니다.
+브라우저 기반 Instagram Reels 편집기 프로토타입입니다. 영상은 서버에 업로드하지 않고 현재 브라우저에서만 사용합니다.
 
-## 현재 구현
+## 실행 (Windows CMD)
 
-- React + TypeScript + Vite
-- Zustand 프로젝트 상태
-- 9:16 Preview Canvas UI
-- Media / Properties 패널
-- Video / Text / Audio 멀티 트랙 Timeline
-- 로컬 MP4 / WebM / MOV 선택
-- Object URL 기반 브라우저 로컬 영상 Preview
-- Play / Pause
-- ±1초 Seek
-- 영상 재생 시간과 Timeline Playhead 동기화
-- Timeline 클릭 Seek
-- 업로드 영상 길이로 Timeline 자동 갱신
-- Clip 선택 상태
-- Playhead 기준 Clip Split
-- Timeline Zoom
-- GitHub Actions production build 검증
-- 1080x1920 / 30fps 기본 프로젝트 모델
+저장소 루트에서는 먼저 편집기 브랜치와 `editor` 폴더로 이동합니다.
 
-## 실행
-
-```bash
+```bat
+git switch feature/reels-editor
+git pull origin feature/reels-editor
 cd editor
-npm install
+npm ci
 npm run dev
 ```
 
-## 다음 구현 순서
+터미널에 표시된 `Local` 주소(기본 `http://localhost:5173/`)를 브라우저에서 엽니다. 다른 컴퓨터에서도 접근하는 배포 주소는 아직 제공하지 않습니다.
 
-1. Clip drag
-2. Trim handles
-3. Delete + gap 처리
-4. Text overlay
-5. Image overlay
-6. Audio track
-7. Undo / Redo
-8. MP4 export
+## 현재 구현
+
+- React + TypeScript + Vite + Zustand
+- 1080×1920 / 30fps, 9:16 영상 프리뷰
+- 로컬 MP4 / WebM / MOV 선택 (실제 재생은 브라우저 코덱 지원에 따름)
+- Play / Pause, ±1초 이동, 타임라인 클릭으로 탐색, 타임라인 확대/축소
+- 선택 클립을 재생 헤드에서 분할 (최소 1프레임)
+- 클립 드래그 이동, 양쪽 핸들 트림, 인접 클립/재생 헤드 스냅
+- 원본 영상 범위와 타임라인 시간 분리, 트림 후 구간 복원 가능
+- 같은 트랙에서 겹침 방지, 이동 후 시간순 정렬
+- Delete: 빈 구간 유지, 삭제 + 당기기: 같은 트랙의 뒤 클립만 당김
+- 빈 구간의 검은 화면과 무음 재생, 프로젝트 끝 자동 정지
+- 선택 클립의 타임라인 시작/길이/원본 구간 표시
+- 타임라인 엔진과 편집 상태 자동 테스트, GitHub Actions 빌드
+
+## 편집 방법
+
+1. 영상을 추가합니다. 새 영상 선택 시 현재 클립들은 교체됩니다.
+2. 타임라인 눈금을 클릭해 원하는 시각으로 이동하고 `Split`으로 나눕니다.
+3. 클립 몸통을 드래그해 이동합니다. 가장자리 핸들은 사용 구간을 조절합니다.
+4. `Delete`로 제거하거나 `삭제 + 당기기`로 뒤 클립을 당깁니다.
+
+클립/핸들에 포커스가 있을 때 방향키는 1프레임, Shift+방향키는 10프레임 단위로 편집합니다. Alt+드래그는 스냅을 해제합니다. Delete/Backspace는 일반 삭제, Shift+Delete/Backspace는 삭제 후 당기기입니다.
+
+프로젝트 길이는 마지막 클립 끝까지입니다. 중간 빈 구간은 유지되며 끝의 빈 구간은 제거됩니다. 현재는 원본 영상 한 개에서 만든 여러 클립을 지원합니다. 새로고침 시 로컬 편집 상태가 초기화됩니다.
+
+## 검증
+
+```bash
+npm ci
+npm test
+npm run build
+```
+
+## 다음 구현
+
+- 텍스트/이미지 오버레이
+- 별도 오디오 트랙 편집
+- Undo / Redo
+- 프로젝트 저장
+- MP4 내보내기
+
+아직 구현하지 않은 기능의 버튼은 비활성화되어 있습니다.

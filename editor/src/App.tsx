@@ -1,6 +1,9 @@
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useEditorStore } from './store/editorStore'
 import type { TrackType } from './types/editor'
+import { activeVideo, canSplitClip } from './engine/timeline'
+import { useTimelinePlayback } from './engine/useTimelinePlayback'
+import { TimelineClip } from './components/TimelineClip'
 
 const trackLabel: Record<TrackType, string> = {
   video: 'VIDEO',
@@ -20,15 +23,20 @@ const formatTime = (seconds: number) => {
 }
 
 export function App() {
-  const { project, selectedClipId, setCurrentTime, loadVideo, selectClip, splitSelectedClip } = useEditorStore()
+  const { project, selectedClipId, loadVideo, selectClip, splitSelectedClip, editClip, deleteSelectedClip } = useEditorStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
 
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [videoName, setVideoName] = useState<string | null>(null)
-  const [isPlaying, setIsPlaying] = useState(false)
   const [pxPerSecond, setPxPerSecond] = useState(28)
-  const timelineWidth = Math.max(project.duration * pxPerSecond, 720)
+  const timelineScrollRef = useRef<HTMLDivElement>(null)
+  const [videoDuration, setVideoDuration] = useState(0)
+  const { isPlaying, visible, error, setError, pause, seekTo, togglePlayback, onSeeked } = useTimelinePlayback(videoRef, videoUrl)
+  const selectedClip = project.tracks.flatMap(track => track.clips).find(clip => clip.id === selectedClipId)
+  const canSplit = !!selectedClip && canSplitClip(selectedClip, project.currentTime, project.canvas.fps)
+  const hasActiveVideo = !!activeVideo(project.tracks, project.currentTime)
+  const timelineWidth = Math.max((project.duration + 10) * pxPerSecond, 720)
   const playheadLeft = project.currentTime * pxPerSecond
 
   const timeMarks = useMemo(
@@ -51,59 +59,54 @@ export function App() {
       return
     }
 
-    if (!file.type.startsWith('video/')) {
+    if (!file.type.startsWith('video/') && !(file.type === '' && /\.(mp4|webm|mov)$/i.test(file.name))) {
+      setError('지원하는 영상 파일을 선택하세요.')
       event.target.value = ''
       return
     }
 
+    pause()
+    setVideoDuration(0)
     setVideoUrl(URL.createObjectURL(file))
     setVideoName(file.name)
-    setIsPlaying(false)
     event.target.value = ''
   }
 
   const handleLoadedMetadata = () => {
     const video = videoRef.current
 
-    if (!video || !videoName || !Number.isFinite(video.duration)) {
+    if (!video || !videoName) {
+      return
+    }
+    if (!Number.isFinite(video.duration) || video.duration <= 0) {
+      pause()
+      setError('영상 길이를 읽을 수 없습니다. 다른 MP4/WebM을 선택하세요.')
       return
     }
 
     video.currentTime = 0
+    setVideoDuration(video.duration)
     loadVideo(videoName, video.duration)
   }
 
-  const seekTo = (time: number) => {
-    const safeTime = Math.min(Math.max(time, 0), project.duration)
-
-    setCurrentTime(safeTime)
-
-    if (videoRef.current) {
-      videoRef.current.currentTime = safeTime
-    }
+  const deleteClip = (closeGap = false) => {
+    pause()
+    deleteSelectedClip(closeGap)
   }
 
-  const togglePlayback = async () => {
-    const video = videoRef.current
-
-    if (!videoUrl || !video) {
-      return
-    }
-
-    if (video.paused) {
-      if (video.currentTime >= video.duration) {
-        seekTo(0)
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement
+      if (target.closest('input, textarea, select, button, [contenteditable="true"]')) return
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        event.preventDefault()
+        pause()
+        useEditorStore.getState().deleteSelectedClip(event.shiftKey)
       }
-
-      try {
-        await video.play()
-      } catch {
-        setIsPlaying(false)
-      }
-    } else {
-      video.pause()
     }
-  }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [pause])
 
   return (
     <main className="app-shell">
@@ -113,9 +116,9 @@ export function App() {
           <span className="project-name">{project.name}</span>
         </div>
         <div className="topbar-actions">
-          <button className="button ghost">Undo</button>
-          <button className="button ghost">Redo</button>
-          <button className="button primary">Export</button>
+          <button className="button ghost" disabled title="준비 중">Undo</button>
+          <button className="button ghost" disabled title="준비 중">Redo</button>
+          <button className="button primary" disabled title="준비 중">Export</button>
         </div>
       </header>
 
@@ -142,9 +145,9 @@ export function App() {
 
           <nav className="asset-tabs">
             <button className="active">미디어</button>
-            <button>텍스트</button>
-            <button>오디오</button>
-            <button>스티커</button>
+            <button disabled>텍스트</button>
+            <button disabled>오디오</button>
+            <button disabled>스티커</button>
           </nav>
 
           {videoName ? (
@@ -156,7 +159,7 @@ export function App() {
               <span className="media-thumb">▶</span>
               <span className="media-info">
                 <strong>{videoName}</strong>
-                <small>{formatTime(project.duration)}</small>
+                <small>원본 {formatTime(videoDuration)}</small>
               </span>
             </button>
           ) : (
@@ -174,24 +177,19 @@ export function App() {
           </div>
 
           <div className="preview-stage">
+            {error && <div className="media-error" role="alert">{error}</div>}
             <div className="phone-canvas">
               {videoUrl ? (
                 <video
                   ref={videoRef}
                   className="preview-video"
+                  style={{ visibility: visible && hasActiveVideo ? 'visible' : 'hidden' }}
                   src={videoUrl}
                   playsInline
                   preload="metadata"
                   onLoadedMetadata={handleLoadedMetadata}
-                  onTimeUpdate={(event) => {
-                    setCurrentTime(event.currentTarget.currentTime)
-                  }}
-                  onPlay={() => setIsPlaying(true)}
-                  onPause={() => setIsPlaying(false)}
-                  onEnded={() => {
-                    setIsPlaying(false)
-                    setCurrentTime(project.duration)
-                  }}
+                  onSeeked={onSeeked}
+                  onError={() => { pause(); setError('이 영상은 브라우저에서 재생할 수 없습니다. 다른 MP4/WebM을 선택하세요.') }}
                 />
               ) : (
                 <div className="canvas-copy">
@@ -204,16 +202,16 @@ export function App() {
           </div>
 
           <div className="transport">
-            <button onClick={() => seekTo(project.currentTime - 1)}>◀</button>
+            <button disabled={project.duration <= 0} aria-label="1초 뒤로" onClick={() => seekTo(project.currentTime - 1)}>◀</button>
             <button
               className="play"
               onClick={togglePlayback}
-              disabled={!videoUrl}
+              disabled={!videoUrl || project.duration <= 0 || videoDuration <= 0 || !!error}
               aria-label={isPlaying ? 'pause' : 'play'}
             >
               {isPlaying ? 'Ⅱ' : '▶'}
             </button>
-            <button onClick={() => seekTo(project.currentTime + 1)}>▶|</button>
+            <button disabled={project.duration <= 0} aria-label="1초 앞으로" onClick={() => seekTo(project.currentTime + 1)}>▶|</button>
             <span>
               {formatTime(project.currentTime)} / {formatTime(project.duration)}
             </span>
@@ -222,32 +220,19 @@ export function App() {
 
         <aside className="sidebar right-panel">
           <h2>Properties</h2>
-          <div className="property-group">
-            <label>Position</label>
-            <div className="two-cols">
-              <input value="X  0" readOnly />
-              <input value="Y  0" readOnly />
+          {selectedClip ? (
+            <div className="clip-properties">
+              <strong>{selectedClip.name}</strong>
+              <dl>
+                <dt>타임라인 시작</dt><dd>{selectedClip.start.toFixed(2)}초</dd>
+                <dt>사용 길이</dt><dd>{selectedClip.duration.toFixed(2)}초</dd>
+                <dt>원본 시작</dt><dd>{(selectedClip.sourceStart ?? 0).toFixed(2)}초</dd>
+                <dt>원본 끝</dt><dd>{((selectedClip.sourceStart ?? 0) + selectedClip.duration).toFixed(2)}초</dd>
+              </dl>
             </div>
-          </div>
-
-          <div className="property-group">
-            <label>Scale</label>
-            <input value="100%" readOnly />
-          </div>
-
-          <div className="property-group">
-            <label>Opacity</label>
-            <input type="range" min="0" max="100" defaultValue="100" />
-          </div>
-
-          <div className="property-group">
-            <label>Canvas</label>
-            <select defaultValue="9:16">
-              <option>9:16</option>
-              <option>4:5</option>
-              <option>1:1</option>
-            </select>
-          </div>
+          ) : <p className="panel-hint">클립을 선택하면 편집 구간이 표시됩니다.</p>}
+          <p className="panel-hint">클립을 드래그해 이동하고, 양쪽 가장자리로 구간을 조절하세요.</p>
+          <p className="panel-hint">방향키: 1프레임 이동 · Shift: 10프레임<br />Alt + 드래그: 스냅 해제</p>
         </aside>
       </section>
 
@@ -256,14 +241,18 @@ export function App() {
           <div>
             <button
               className="button ghost"
-              disabled={!selectedClipId}
-              onClick={() => splitSelectedClip(project.currentTime)}
+              disabled={!canSplit}
+              onClick={() => { pause(); splitSelectedClip(project.currentTime) }}
             >
               Split
             </button>
-            <button className="button ghost" disabled title="다음 단계에서 구현">
+            <button className="button ghost" disabled={!selectedClipId} title="선택 클립 삭제 · 빈 구간 유지 (Delete)" onClick={() => deleteClip()}>
               Delete
             </button>
+            <button className="button ghost" disabled={!selectedClipId} title="선택 클립 삭제 후 같은 트랙의 뒤 클립을 당김 (Shift+Delete)" onClick={() => deleteClip(true)}>
+              삭제 + 당기기
+            </button>
+            <span className="timeline-hint">빈 구간은 검은 화면으로 재생됩니다.</span>
           </div>
           <div className="zoom-control">
             <span>Timeline</span>
@@ -287,7 +276,7 @@ export function App() {
             ))}
           </div>
 
-          <div className="timeline-scroll">
+          <div className="timeline-scroll" ref={timelineScrollRef}>
             <div
               className="timeline-content"
               style={{ width: timelineWidth }}
@@ -312,20 +301,19 @@ export function App() {
               {project.tracks.map((track) => (
                 <div className="track-row" key={track.id}>
                   {track.clips.map((clip) => (
-                    <div
+                    <TimelineClip
                       key={clip.id}
-                      className={`clip clip-${clip.type}${selectedClipId === clip.id ? ' selected' : ''}`}
-                      style={{
-                        left: clip.start * pxPerSecond,
-                        width: clip.duration * pxPerSecond,
-                      }}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        selectClip(clip.id)
-                      }}
-                    >
-                      <span>{clip.name}</span>
-                    </div>
+                      clip={clip}
+                      clips={track.clips}
+                      selected={selectedClipId === clip.id}
+                      fps={project.canvas.fps}
+                      pxPerSecond={pxPerSecond}
+                      playhead={project.currentTime}
+                      scrollRef={timelineScrollRef}
+                      onSelect={() => selectClip(clip.id)}
+                      onBeginEdit={pause}
+                      onCommit={(mode, target, tolerance) => editClip(clip.id, mode, target, tolerance)}
+                    />
                   ))}
                 </div>
               ))}
