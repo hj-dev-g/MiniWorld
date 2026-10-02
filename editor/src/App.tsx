@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useEditorStore } from './store/editorStore'
 import type { TrackType } from './types/editor'
 
@@ -9,17 +9,102 @@ const trackLabel: Record<TrackType, string> = {
   image: 'IMAGE',
 }
 
+const formatTime = (seconds: number) => {
+  const safeSeconds = Number.isFinite(seconds) ? Math.max(0, seconds) : 0
+  const minutes = Math.floor(safeSeconds / 60)
+  const remainder = safeSeconds % 60
+
+  return `${minutes.toString().padStart(2, '0')}:${remainder
+    .toFixed(1)
+    .padStart(4, '0')}`
+}
+
 export function App() {
-  const { project, setCurrentTime } = useEditorStore()
+  const { project, setCurrentTime, loadVideo } = useEditorStore()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  const [videoName, setVideoName] = useState<string | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
 
   const pxPerSecond = 28
-  const timelineWidth = project.duration * pxPerSecond
+  const timelineWidth = Math.max(project.duration * pxPerSecond, 720)
   const playheadLeft = project.currentTime * pxPerSecond
 
   const timeMarks = useMemo(
     () => Array.from({ length: Math.floor(project.duration / 5) + 1 }, (_, i) => i * 5),
     [project.duration],
   )
+
+  useEffect(() => {
+    return () => {
+      if (videoUrl) {
+        URL.revokeObjectURL(videoUrl)
+      }
+    }
+  }, [videoUrl])
+
+  const handleMediaChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      return
+    }
+
+    if (!file.type.startsWith('video/')) {
+      event.target.value = ''
+      return
+    }
+
+    setVideoUrl(URL.createObjectURL(file))
+    setVideoName(file.name)
+    setIsPlaying(false)
+    event.target.value = ''
+  }
+
+  const handleLoadedMetadata = () => {
+    const video = videoRef.current
+
+    if (!video || !videoName || !Number.isFinite(video.duration)) {
+      return
+    }
+
+    video.currentTime = 0
+    loadVideo(videoName, video.duration)
+  }
+
+  const seekTo = (time: number) => {
+    const safeTime = Math.min(Math.max(time, 0), project.duration)
+
+    setCurrentTime(safeTime)
+
+    if (videoRef.current) {
+      videoRef.current.currentTime = safeTime
+    }
+  }
+
+  const togglePlayback = async () => {
+    const video = videoRef.current
+
+    if (!videoUrl || !video) {
+      return
+    }
+
+    if (video.paused) {
+      if (video.currentTime >= video.duration) {
+        seekTo(0)
+      }
+
+      try {
+        await video.play()
+      } catch {
+        setIsPlaying(false)
+      }
+    } else {
+      video.pause()
+    }
+  }
 
   return (
     <main className="app-shell">
@@ -38,10 +123,22 @@ export function App() {
       <section className="workspace">
         <aside className="sidebar left-panel">
           <h2>Media</h2>
-          <button className="upload-box">
+
+          <input
+            ref={fileInputRef}
+            className="file-input"
+            type="file"
+            accept="video/mp4,video/webm,video/quicktime"
+            onChange={handleMediaChange}
+          />
+
+          <button
+            className="upload-box"
+            onClick={() => fileInputRef.current?.click()}
+          >
             <span className="upload-icon">＋</span>
-            <strong>미디어 추가</strong>
-            <small>MP4 · PNG · JPG · MP3</small>
+            <strong>영상 추가</strong>
+            <small>MP4 · WebM · MOV</small>
           </button>
 
           <nav className="asset-tabs">
@@ -51,9 +148,23 @@ export function App() {
             <button>스티커</button>
           </nav>
 
-          <div className="asset-empty">
-            업로드한 미디어가 여기에 표시됩니다.
-          </div>
+          {videoName ? (
+            <button
+              className="media-card"
+              onClick={() => seekTo(0)}
+              title="처음으로 이동"
+            >
+              <span className="media-thumb">▶</span>
+              <span className="media-info">
+                <strong>{videoName}</strong>
+                <small>{formatTime(project.duration)}</small>
+              </span>
+            </button>
+          ) : (
+            <div className="asset-empty">
+              영상을 추가하면 브라우저에서 바로 미리볼 수 있습니다.
+            </div>
+          )}
         </aside>
 
         <section className="preview-area">
@@ -65,20 +176,47 @@ export function App() {
 
           <div className="preview-stage">
             <div className="phone-canvas">
-              <div className="canvas-copy">
-                <span className="eyebrow">Instagram Reel</span>
-                <h1>오늘도 그림중</h1>
-                <p>Preview Canvas</p>
-              </div>
+              {videoUrl ? (
+                <video
+                  ref={videoRef}
+                  className="preview-video"
+                  src={videoUrl}
+                  playsInline
+                  preload="metadata"
+                  onLoadedMetadata={handleLoadedMetadata}
+                  onTimeUpdate={(event) => {
+                    setCurrentTime(event.currentTarget.currentTime)
+                  }}
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                  onEnded={() => {
+                    setIsPlaying(false)
+                    setCurrentTime(project.duration)
+                  }}
+                />
+              ) : (
+                <div className="canvas-copy">
+                  <span className="eyebrow">Instagram Reel</span>
+                  <h1>영상 추가</h1>
+                  <p>로컬 MP4를 올려 편집을 시작하세요.</p>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="transport">
-            <button>◀</button>
-            <button className="play">▶</button>
-            <button>▶|</button>
+            <button onClick={() => seekTo(project.currentTime - 1)}>◀</button>
+            <button
+              className="play"
+              onClick={togglePlayback}
+              disabled={!videoUrl}
+              aria-label={isPlaying ? 'pause' : 'play'}
+            >
+              {isPlaying ? 'Ⅱ' : '▶'}
+            </button>
+            <button onClick={() => seekTo(project.currentTime + 1)}>▶|</button>
             <span>
-              {project.currentTime.toFixed(1)}s / {project.duration.toFixed(1)}s
+              {formatTime(project.currentTime)} / {formatTime(project.duration)}
             </span>
           </div>
         </section>
@@ -143,7 +281,7 @@ export function App() {
               onClick={(event) => {
                 const rect = event.currentTarget.getBoundingClientRect()
                 const x = event.clientX - rect.left
-                setCurrentTime(x / pxPerSecond)
+                seekTo(x / pxPerSecond)
               }}
             >
               <div className="ruler">
