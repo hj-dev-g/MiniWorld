@@ -20,7 +20,7 @@ const formatTime = (seconds: number) => {
 }
 
 export function App() {
-  const { project, setCurrentTime, loadVideo } = useEditorStore()
+  const { project, selectedClipId, setCurrentTime, loadVideo, selectClip, splitSelectedClip } = useEditorStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -255,8 +255,16 @@ export function App() {
       <section className="timeline-section">
         <div className="timeline-tools">
           <div>
-            <button className="button ghost">Split</button>
-            <button className="button ghost">Delete</button>
+            <button
+              className="button ghost"
+              disabled={!selectedClipId}
+              onClick={() => splitSelectedClip(project.currentTime)}
+            >
+              Split
+            </button>
+            <button className="button ghost" disabled title="다음 단계에서 구현">
+              Delete
+            </button>
           </div>
           <div className="zoom-control">
             <span>Timeline</span>
@@ -301,10 +309,14 @@ export function App() {
                   {track.clips.map((clip) => (
                     <div
                       key={clip.id}
-                      className={`clip clip-${clip.type}`}
+                      className={`clip clip-${clip.type}${selectedClipId === clip.id ? ' selected' : ''}`}
                       style={{
                         left: clip.start * pxPerSecond,
                         width: clip.duration * pxPerSecond,
+                      }}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        selectClip(clip.id)
                       }}
                     >
                       <span>{clip.name}</span>
