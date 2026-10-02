@@ -4,6 +4,7 @@ import type { EditorProject } from '../types/editor'
 interface EditorState {
   project: EditorProject
   setCurrentTime: (time: number) => void
+  loadVideo: (name: string, duration: number) => void
 }
 
 const initialProject: EditorProject = {
@@ -72,11 +73,39 @@ const initialProject: EditorProject = {
 
 export const useEditorStore = create<EditorState>((set) => ({
   project: initialProject,
+
   setCurrentTime: (time) =>
     set((state) => ({
       project: {
         ...state.project,
         currentTime: Math.min(Math.max(time, 0), state.project.duration),
+      },
+    })),
+
+  loadVideo: (name, duration) =>
+    set((state) => ({
+      project: {
+        ...state.project,
+        name,
+        duration,
+        currentTime: 0,
+        tracks: state.project.tracks.map((track) => ({
+          ...track,
+          clips:
+            track.type === 'video'
+              ? [
+                  {
+                    id: crypto.randomUUID(),
+                    name,
+                    type: 'video',
+                    start: 0,
+                    duration,
+                    sourceStart: 0,
+                    sourceDuration: duration,
+                  },
+                ]
+              : [],
+        })),
       },
     })),
 }))
