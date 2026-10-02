@@ -1,4 +1,4 @@
-import { useRef, useState, type FocusEvent } from 'react'
+import { NumberField } from './NumberField'
 import { useEditorStore } from '../store/editorStore'
 import type { Clip, TextStyle } from '../types/editor'
 
@@ -51,25 +51,4 @@ export function TextProperties({ clip, onPause }: { clip: Clip; onPause: () => v
       <p className="panel-hint">위치와 글자 크기는 원본 캔버스 기준입니다. 여러 줄은 Enter로 입력하세요.</p>
     </div>
   )
-}
-
-function NumberField({ label, value, max, onChange, onBegin, onEnd }: {
-  label: string; value: number; max: number; onChange: (value: number) => void; onBegin: () => void; onEnd: () => void
-}) {
-  const [draft, setDraft] = useState('')
-  const focused = useRef(false)
-  const display = focused.current ? draft : String(Math.round(value))
-  const blur = (_event: FocusEvent<HTMLInputElement>) => {
-    if (draft.trim() !== '' && Number.isFinite(Number(draft))) onChange(Math.min(Math.max(Number(draft), 0), max))
-    focused.current = false
-    setDraft('')
-    onEnd()
-  }
-  return <label>{label}<input type="number" min={0} max={max} step={1} value={display}
-    onFocus={() => { focused.current = true; setDraft(String(Math.round(value))); onBegin() }}
-    onChange={event => {
-      setDraft(event.target.value)
-      const next = Number(event.target.value)
-      if (event.target.value.trim() !== '' && Number.isFinite(next) && next >= 0 && next <= max) onChange(next)
-    }} onBlur={blur} /></label>
 }

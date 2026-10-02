@@ -4,7 +4,9 @@ import type { TrackType } from './types/editor'
 import { activeVideo, canSplitClip } from './engine/timeline'
 import { useTimelinePlayback } from './engine/useTimelinePlayback'
 import { TimelineClip } from './components/TimelineClip'
-import { PreviewTextLayer } from './components/PreviewTextLayer'
+import { PreviewOverlayLayer } from './components/PreviewOverlayLayer'
+import { ImageProperties } from './components/ImageProperties'
+import { useImageImports } from './engine/useImageImports'
 import { TextProperties } from './components/TextProperties'
 
 const trackLabel: Record<TrackType, string> = {
@@ -25,11 +27,13 @@ const formatTime = (seconds: number) => {
 }
 
 export function App() {
-  const { project, selectedClipId, loadVideo, selectClip, splitSelectedClip, editClip, deleteSelectedClip, addText, past, future, undo, redo } = useEditorStore()
+  const { project, selectedClipId, loadVideo, selectClip, splitSelectedClip, editClip, deleteSelectedClip, addText, imageAssets, insertImage, past, future, undo, redo } = useEditorStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const { importFiles, busy: imageBusy, error: imageError } = useImageImports()
   const videoRef = useRef<HTMLVideoElement>(null)
   const trackLabelsRef = useRef<HTMLDivElement>(null)
-  const [assetTab, setAssetTab] = useState<'media' | 'text'>('media')
+  const [assetTab, setAssetTab] = useState<'media' | 'text' | 'image'>('media')
 
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [videoName, setVideoName] = useState<string | null>(null)
@@ -40,8 +44,9 @@ export function App() {
   const selectedClip = project.tracks.flatMap(track => track.clips).find(clip => clip.id === selectedClipId)
   const canSplit = !!selectedClip && canSplitClip(selectedClip, project.currentTime, project.canvas.fps)
   const textClips = project.tracks.flatMap(track => track.type === 'text' ? track.clips : [])
+  const imageClips = project.tracks.flatMap(track => track.type === 'image' ? track.clips : [])
   const selectedTextActive = !!selectedClip && project.currentTime >= selectedClip.start && project.currentTime < selectedClip.start + selectedClip.duration
-  const trackHeight = (type: TrackType, count: number) => type === 'text' ? Math.max(58, count * 48 + 10) : 58
+  const trackHeight = (type: TrackType, count: number) => (type === 'text' || type === 'image') ? Math.max(58, count * 48 + 10) : 58
   const hasActiveVideo = !!activeVideo(project.tracks, project.currentTime)
   const timelineWidth = Math.max((project.duration + 10) * pxPerSecond, 720)
   const playheadLeft = project.currentTime * pxPerSecond
@@ -165,10 +170,23 @@ export function App() {
             <button className={assetTab === 'media' ? 'active' : ''} onClick={() => setAssetTab('media')}>미디어</button>
             <button className={assetTab === 'text' ? 'active' : ''} onClick={() => setAssetTab('text')}>텍스트</button>
             <button disabled>오디오</button>
-            <button disabled>스티커</button>
+            <button className={assetTab === 'image' ? 'active' : ''} onClick={() => setAssetTab('image')}>이미지</button>
           </nav>
 
-          {assetTab === 'text' ? (
+          <input ref={imageInputRef} className="file-input" type="file" multiple accept="image/png,image/jpeg,image/webp" disabled={imageBusy}
+            onChange={event => { const files = Array.from(event.target.files ?? []); event.target.value = ''; pause(); void importFiles(files) }} />
+          {assetTab === 'image' ? (
+            <div className="text-library">
+              <button className="button primary add-text" disabled={imageBusy} onClick={() => imageInputRef.current?.click()}>{imageBusy ? '이미지 읽는 중…' : '＋ 이미지 추가'}</button>
+              <p className="panel-hint">PNG · JPG · WebP · 투명 배경 지원<br />이미지를 클릭하면 현재 위치에 다시 추가합니다.</p>
+              {imageError && <p className="image-error" role="alert">{imageError}</p>}
+              {Object.values(imageAssets).map(asset => <button className="media-card" key={asset.id}
+                onClick={() => { pause(); insertImage(asset.id) }} title="현재 위치에 이미지 추가">
+                <img className="media-thumb image-thumb" src={asset.url} alt="" />
+                <span className="media-info"><strong>{asset.name}</strong><small>{asset.width} × {asset.height}</small></span>
+              </button>)}
+            </div>
+          ) : assetTab === 'text' ? (
             <div className="text-library">
               <button className="button primary add-text" onClick={addCaption}>＋ 텍스트 추가</button>
               <p className="panel-hint">현재 재생 헤드 위치에 자막을 추가합니다.</p>
@@ -219,14 +237,14 @@ export function App() {
                   onSeeked={onSeeked}
                   onError={() => { pause(); setError('이 영상은 브라우저에서 재생할 수 없습니다. 다른 MP4/WebM을 선택하세요.') }}
                 />
-              ) : textClips.length === 0 ? (
+              ) : textClips.length === 0 && imageClips.length === 0 ? (
                 <div className="canvas-copy">
                   <span className="eyebrow">Instagram Reel</span>
                   <h1>영상 추가</h1>
                   <p>로컬 MP4를 올려 편집을 시작하세요.</p>
                 </div>
               ) : null}
-              <PreviewTextLayer project={project} selectedClipId={selectedClipId} onPause={pause} />
+              <PreviewOverlayLayer project={project} selectedClipId={selectedClipId} onPause={pause} />
             </div>
           </div>
 
@@ -268,6 +286,12 @@ export function App() {
             </div>}
             <TextProperties key={selectedClip.id} clip={selectedClip} onPause={pause} />
           </>}
+          {selectedClip?.image && <>
+            {!selectedTextActive && <div className="caption-notice">현재 시각에는 이 이미지가 표시되지 않습니다.
+              <button className="button ghost" onClick={() => seekTo(selectedClip.start)}>이미지 시작으로 이동</button>
+            </div>}
+            <ImageProperties key={selectedClip.id} clip={selectedClip} onPause={pause} />
+          </>}
           <p className="panel-hint">클립을 드래그해 이동하고, 양쪽 가장자리로 구간을 조절하세요.</p>
           <p className="panel-hint">방향키: 1프레임 이동 · Shift: 10프레임<br />Alt + 드래그: 스냅 해제</p>
         </aside>
@@ -289,7 +313,7 @@ export function App() {
             <button className="button ghost" disabled={!selectedClipId} title="선택 클립 삭제 후 같은 트랙의 뒤 클립을 당김 (Shift+Delete)" onClick={() => deleteClip(true)}>
               삭제 + 당기기
             </button>
-            <span className="timeline-hint">영상이 없는 구간은 검은 배경에 자막만 표시됩니다.</span>
+            <span className="timeline-hint">영상이 없는 구간은 검은 배경에 자막과 이미지가 표시됩니다.</span>
           </div>
           <div className="zoom-control">
             <span>Timeline</span>
@@ -342,7 +366,7 @@ export function App() {
                       key={clip.id}
                       clip={clip}
                       clips={track.clips}
-                      top={track.type === 'text' ? 8 + index * 48 : 8}
+                      top={track.type === 'text' || track.type === 'image' ? 8 + index * 48 : 8}
                       selected={selectedClipId === clip.id}
                       fps={project.canvas.fps}
                       pxPerSecond={pxPerSecond}

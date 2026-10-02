@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { clipEnd, editClip, projectDuration, splitClip, type EditMode } from '../engine/timeline'
-import type { EditorProject, TextStyle, Track } from '../types/editor'
+import { constrainImage, fitImageSize, type ImagePatch } from '../engine/imageGeometry'
+import type { EditorProject, ImageAsset, TextStyle, Track } from '../types/editor'
 
 interface Snapshot {
   project: EditorProject
@@ -8,6 +9,11 @@ interface Snapshot {
 }
 
 interface EditorState extends Snapshot {
+  imageAssets: Record<string, ImageAsset>
+  mediaRevision: number
+  addImage: (asset: ImageAsset) => void
+  insertImage: (assetId: string) => void
+  updateImage: (clipId: string, patch: ImagePatch) => void
   past: Snapshot[]
   future: Snapshot[]
   editBaseline: Snapshot | null
@@ -33,6 +39,7 @@ const initialProject: EditorProject = {
   tracks: [
     { id: 'video-track', type: 'video', clips: [] },
     { id: 'text-track', type: 'text', clips: [] },
+    { id: 'image-track', type: 'image', clips: [] },
     { id: 'audio-track', type: 'audio', clips: [] },
   ],
 }
@@ -69,12 +76,28 @@ function record(state: EditorState, project: EditorProject, selectedClipId = sta
   }
 }
 
+function insertImageClip(state: EditorState, asset: ImageAsset): EditorState {
+  const { canvas, currentTime, duration } = state.project
+  const start = Math.floor(currentTime * canvas.fps) / canvas.fps
+  const remaining = duration - start
+  const id = crypto.randomUUID()
+  const clip = {
+    id, name: asset.name, type: 'image' as const, start,
+    duration: remaining >= 1 / canvas.fps ? Math.min(3, remaining) : 3,
+    image: { assetId: asset.id, x: canvas.width / 2, y: canvas.height / 2, opacity: 1, ...fitImageSize(asset, canvas) },
+  }
+  const tracks = state.project.tracks.map(track => track.type !== 'image' ? track : {
+    ...track, clips: [...track.clips, clip].sort((a, b) => a.start - b.start),
+  })
+  return record(state, withTracks(state.project, tracks), id)
+}
+
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 const fonts: TextStyle['fontFamily'][] = ['system-ui', 'Malgun Gothic', 'Arial', 'Georgia', 'monospace']
 
 export const useEditorStore = create<EditorState>((set) => ({
   project: initialProject,
-  selectedClipId: null, past: [], future: [], editBaseline: null,
+  selectedClipId: null, imageAssets: {}, mediaRevision: 0, past: [], future: [], editBaseline: null,
   setCurrentTime: time => set(state => Number.isFinite(time) ? {
     project: { ...state.project, currentTime: clamp(time, 0, state.project.duration) },
   } : state),
@@ -84,7 +107,7 @@ export const useEditorStore = create<EditorState>((set) => ({
     const id = crypto.randomUUID()
     // The URL is owned by the UI. Clear history when replacing its media.
     set(state => ({
-      selectedClipId: id, past: [], future: [], editBaseline: null,
+      selectedClipId: id, imageAssets: {}, mediaRevision: state.mediaRevision + 1, past: [], future: [], editBaseline: null,
       project: { ...state.project, name, duration, currentTime: 0,
         tracks: state.project.tracks.map(track => ({ ...track,
           clips: track.type === 'video' ? [{
@@ -137,6 +160,28 @@ export const useEditorStore = create<EditorState>((set) => ({
       }].sort((a, b) => a.start - b.start),
     })
     return record(state, withTracks(state.project, tracks), id)
+  }),
+
+  addImage: asset => set(current => {
+    if (!asset.id || !asset.url || !Number.isFinite(asset.width) || !Number.isFinite(asset.height) || asset.width <= 0 || asset.height <= 0) return current
+    // Asset URLs remain outside snapshots so deleted/undone clips can reuse them.
+    if (current.imageAssets[asset.id]) return current
+    const state = { ...finishEdit(current), imageAssets: { ...current.imageAssets, [asset.id]: asset } }
+    return insertImageClip(state, asset)
+  }),
+  insertImage: assetId => set(current => {
+    const asset = current.imageAssets[assetId]
+    return asset ? insertImageClip(finishEdit(current), asset) : current
+  }),
+  updateImage: (clipId, patch) => set(state => {
+    const tracks = state.project.tracks.map(track => ({ ...track,
+      clips: track.clips.map(clip => {
+        const asset = clip.image && state.imageAssets[clip.image.assetId]
+        return clip.id === clipId && clip.image && asset
+          ? { ...clip, image: constrainImage(clip.image, patch, asset, state.project.canvas) } : clip
+      }),
+    }))
+    return record(state, withTracks(state.project, tracks))
   }),
 
   updateText: (clipId, patch) => set(state => {

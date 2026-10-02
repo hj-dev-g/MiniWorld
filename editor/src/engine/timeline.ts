@@ -33,8 +33,8 @@ export function editClip(
 ): Clip {
   if (!Number.isFinite(target)) return clip
   const others = clips.filter(other => other.id !== clip.id)
-  // Text overlays are independent layers and may be visible at the same time.
-  const blocking = clip.type === 'text' ? [] : others
+  // Independent text/image overlays may be visible at the same time.
+  const blocking = clip.type === 'text' || clip.type === 'image' ? [] : others
   const targets = [0, ...others.flatMap(other => [other.start, clipEnd(other)])]
   if (playhead !== undefined) targets.push(playhead)
   const frameTarget = toFrame(target, fps)

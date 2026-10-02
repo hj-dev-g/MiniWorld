@@ -1,5 +1,22 @@
 export type TrackType = 'video' | 'audio' | 'text' | 'image'
 
+export interface ImageAsset {
+  id: string
+  name: string
+  url: string
+  width: number
+  height: number
+}
+
+export interface ImageStyle {
+  assetId: string
+  x: number
+  y: number
+  width: number
+  height: number
+  opacity: number
+}
+
 export interface TextStyle {
   value: string
   fontFamily: 'system-ui' | 'Malgun Gothic' | 'Arial' | 'Georgia' | 'monospace'
@@ -24,6 +41,7 @@ export interface Clip {
   /** Original media length; retained when splitting/trimming. */
   sourceLength?: number
   text?: TextStyle
+  image?: ImageStyle
 }
 
 export interface Track {

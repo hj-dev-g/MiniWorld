@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from 'react'
+import { ImageOverlay } from './ImageOverlay'
 import { clipEnd } from '../engine/timeline'
 import { useEditorStore } from '../store/editorStore'
 import type { Clip, EditorProject } from '../types/editor'
@@ -9,7 +10,7 @@ interface LayerProps {
   onPause: () => void
 }
 
-export function PreviewTextLayer({ project, selectedClipId, onPause }: LayerProps) {
+export function PreviewOverlayLayer({ project, selectedClipId, onPause }: LayerProps) {
   const layerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState({ x: 1, y: 1 })
   useLayoutEffect(() => {
@@ -21,13 +22,14 @@ export function PreviewTextLayer({ project, selectedClipId, onPause }: LayerProp
     observer.observe(canvas)
     return () => observer.disconnect()
   }, [project.canvas.width, project.canvas.height])
-  const clips = project.tracks.flatMap(track => track.type === 'text' ? track.clips : []).filter(
-    clip => clip.text && project.currentTime >= clip.start && project.currentTime < clipEnd(clip),
+  const clips = project.tracks.flatMap(track => track.type === 'text' || track.type === 'image' ? track.clips : []).filter(
+    clip => (clip.text || clip.image) && project.currentTime >= clip.start && project.currentTime < clipEnd(clip),
   )
   return (
     <div className="preview-text-layer" ref={layerRef}>
       <div className="logical-canvas" style={{ width: project.canvas.width, height: project.canvas.height, transform: `scale(${scale.x}, ${scale.y})` }}>
-        {clips.map(clip => <TextOverlay key={clip.id} clip={clip} selected={clip.id === selectedClipId} scale={scale} canvas={project.canvas} onPause={onPause} />)}
+        {clips.filter(clip => clip.image).map(clip => <ImageOverlay key={clip.id} clip={clip} selected={clip.id === selectedClipId} scale={scale} canvas={project.canvas} onPause={onPause} />)}
+        {clips.filter(clip => clip.text).map(clip => <TextOverlay key={clip.id} clip={clip} selected={clip.id === selectedClipId} scale={scale} canvas={project.canvas} onPause={onPause} />)}
       </div>
     </div>
   )
