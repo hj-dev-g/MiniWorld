@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { clipEnd, editClip, projectDuration, splitClip, type EditMode } from '../engine/timeline'
 import { constrainImage, fitImageSize, type ImagePatch } from '../engine/imageGeometry'
-import type { EditorProject, ImageAsset, TextStyle, Track } from '../types/editor'
+import type { AudioAsset, EditorProject, ImageAsset, SoundStyle, TextStyle, Track } from '../types/editor'
 
 interface Snapshot {
   project: EditorProject
@@ -9,6 +9,10 @@ interface Snapshot {
 }
 
 interface EditorState extends Snapshot {
+  audioAssets: Record<string, AudioAsset>
+  addAudio: (asset: AudioAsset) => void
+  insertAudio: (assetId: string) => void
+  updateSound: (clipId: string, patch: Partial<SoundStyle>) => void
   imageAssets: Record<string, ImageAsset>
   mediaRevision: number
   addImage: (asset: ImageAsset) => void
@@ -92,12 +96,28 @@ function insertImageClip(state: EditorState, asset: ImageAsset): EditorState {
   return record(state, withTracks(state.project, tracks), id)
 }
 
+function insertAudioClip(state: EditorState, asset: AudioAsset): EditorState {
+  const { canvas, currentTime, duration } = state.project
+  const start = Math.floor(currentTime * canvas.fps) / canvas.fps
+  const remaining = duration - start
+  const length = remaining >= 1 / canvas.fps ? Math.min(asset.duration, remaining) : asset.duration
+  const id = crypto.randomUUID()
+  const clip = { id, name: asset.name, type: 'audio' as const, start, duration: length,
+    sourceStart: 0, sourceDuration: length, sourceLength: asset.duration,
+    audioAssetId: asset.id, sound: { volume: .5, muted: false },
+  }
+  const tracks = state.project.tracks.map(track => track.type !== 'audio' ? track : {
+    ...track, clips: [...track.clips, clip].sort((a, b) => a.start - b.start),
+  })
+  return record(state, withTracks(state.project, tracks), id)
+}
+
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 const fonts: TextStyle['fontFamily'][] = ['system-ui', 'Malgun Gothic', 'Arial', 'Georgia', 'monospace']
 
 export const useEditorStore = create<EditorState>((set) => ({
   project: initialProject,
-  selectedClipId: null, imageAssets: {}, mediaRevision: 0, past: [], future: [], editBaseline: null,
+  selectedClipId: null, audioAssets: {}, imageAssets: {}, mediaRevision: 0, past: [], future: [], editBaseline: null,
   setCurrentTime: time => set(state => Number.isFinite(time) ? {
     project: { ...state.project, currentTime: clamp(time, 0, state.project.duration) },
   } : state),
@@ -107,12 +127,12 @@ export const useEditorStore = create<EditorState>((set) => ({
     const id = crypto.randomUUID()
     // The URL is owned by the UI. Clear history when replacing its media.
     set(state => ({
-      selectedClipId: id, imageAssets: {}, mediaRevision: state.mediaRevision + 1, past: [], future: [], editBaseline: null,
+      selectedClipId: id, audioAssets: {}, imageAssets: {}, mediaRevision: state.mediaRevision + 1, past: [], future: [], editBaseline: null,
       project: { ...state.project, name, duration, currentTime: 0,
         tracks: state.project.tracks.map(track => ({ ...track,
           clips: track.type === 'video' ? [{
             id, name, type: 'video', start: 0, duration,
-            sourceStart: 0, sourceDuration: duration, sourceLength: duration,
+            sourceStart: 0, sourceDuration: duration, sourceLength: duration, sound: { volume: 1, muted: false },
           }] : [],
         })),
       },
@@ -160,6 +180,28 @@ export const useEditorStore = create<EditorState>((set) => ({
       }].sort((a, b) => a.start - b.start),
     })
     return record(state, withTracks(state.project, tracks), id)
+  }),
+
+  addAudio: asset => set(current => {
+    if (!asset.id || !asset.url || !Number.isFinite(asset.duration) || asset.duration <= 0 || current.audioAssets[asset.id]) return current
+    const state = { ...finishEdit(current), audioAssets: { ...current.audioAssets, [asset.id]: asset } }
+    return insertAudioClip(state, asset)
+  }),
+  insertAudio: assetId => set(current => {
+    const asset = current.audioAssets[assetId]
+    return asset ? insertAudioClip(finishEdit(current), asset) : current
+  }),
+  updateSound: (clipId, patch) => set(state => {
+    const tracks = state.project.tracks.map(track => ({ ...track,
+      clips: track.clips.map(clip => {
+        if (clip.id !== clipId || (clip.type !== 'video' && clip.type !== 'audio')) return clip
+        const original = clip.sound ?? { volume: 1, muted: false }
+        const sound = { volume: Number.isFinite(patch.volume) ? clamp(patch.volume!, 0, 1) : original.volume,
+          muted: typeof patch.muted === 'boolean' ? patch.muted : original.muted }
+        return sound.volume === original.volume && sound.muted === original.muted ? clip : { ...clip, sound }
+      }),
+    }))
+    return record(state, withTracks(state.project, tracks))
   }),
 
   addImage: asset => set(current => {

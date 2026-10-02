@@ -57,6 +57,8 @@ export function useTimelinePlayback(videoRef: RefObject<HTMLVideoElement | null>
       setVisible(false)
       return
     }
+    video.volume = clip.sound?.volume ?? 1
+    video.muted = clip.sound?.muted ?? false
     const target = sourceTime(clip, project.currentTime)
     const changedClip = activeId.current !== clip.id
     activeId.current = clip.id

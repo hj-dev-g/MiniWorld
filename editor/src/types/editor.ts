@@ -1,5 +1,17 @@
 export type TrackType = 'video' | 'audio' | 'text' | 'image'
 
+export interface AudioAsset {
+  id: string
+  name: string
+  url: string
+  duration: number
+}
+
+export interface SoundStyle {
+  volume: number
+  muted: boolean
+}
+
 export interface ImageAsset {
   id: string
   name: string
@@ -40,6 +52,8 @@ export interface Clip {
   sourceDuration?: number
   /** Original media length; retained when splitting/trimming. */
   sourceLength?: number
+  audioAssetId?: string
+  sound?: SoundStyle
   text?: TextStyle
   image?: ImageStyle
 }

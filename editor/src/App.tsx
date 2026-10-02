@@ -1,4 +1,4 @@
-import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useEditorStore } from './store/editorStore'
 import type { TrackType } from './types/editor'
 import { activeVideo, canSplitClip } from './engine/timeline'
@@ -7,6 +7,9 @@ import { TimelineClip } from './components/TimelineClip'
 import { PreviewOverlayLayer } from './components/PreviewOverlayLayer'
 import { ImageProperties } from './components/ImageProperties'
 import { useImageImports } from './engine/useImageImports'
+import { AudioPlayback } from './components/AudioPlayback'
+import { SoundProperties } from './components/SoundProperties'
+import { useAudioImports } from './engine/useAudioImports'
 import { TextProperties } from './components/TextProperties'
 
 const trackLabel: Record<TrackType, string> = {
@@ -27,13 +30,16 @@ const formatTime = (seconds: number) => {
 }
 
 export function App() {
-  const { project, selectedClipId, loadVideo, selectClip, splitSelectedClip, editClip, deleteSelectedClip, addText, imageAssets, insertImage, past, future, undo, redo } = useEditorStore()
+  const { project, selectedClipId, loadVideo, selectClip, splitSelectedClip, editClip, deleteSelectedClip, addText, imageAssets, insertImage, audioAssets, insertAudio, past, future, undo, redo } = useEditorStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const { importFiles, busy: imageBusy, error: imageError } = useImageImports()
+  const audioInputRef = useRef<HTMLInputElement>(null)
+  const { importFiles: importAudio, busy: audioBusy, error: audioImportError } = useAudioImports()
+  const [audioPlaybackError, setAudioPlaybackError] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const trackLabelsRef = useRef<HTMLDivElement>(null)
-  const [assetTab, setAssetTab] = useState<'media' | 'text' | 'image'>('media')
+  const [assetTab, setAssetTab] = useState<'media' | 'text' | 'image' | 'audio'>('media')
 
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [videoName, setVideoName] = useState<string | null>(null)
@@ -41,12 +47,14 @@ export function App() {
   const timelineScrollRef = useRef<HTMLDivElement>(null)
   const [videoDuration, setVideoDuration] = useState(0)
   const { isPlaying, visible, error, setError, pause, seekTo, togglePlayback, onSeeked } = useTimelinePlayback(videoRef, videoUrl)
+  const onAudioFailure = useCallback((message: string) => { pause(); setAudioPlaybackError(message) }, [pause])
+  const audioClips = project.tracks.flatMap(track => track.type === 'audio' ? track.clips : [])
   const selectedClip = project.tracks.flatMap(track => track.clips).find(clip => clip.id === selectedClipId)
   const canSplit = !!selectedClip && canSplitClip(selectedClip, project.currentTime, project.canvas.fps)
   const textClips = project.tracks.flatMap(track => track.type === 'text' ? track.clips : [])
   const imageClips = project.tracks.flatMap(track => track.type === 'image' ? track.clips : [])
-  const selectedTextActive = !!selectedClip && project.currentTime >= selectedClip.start && project.currentTime < selectedClip.start + selectedClip.duration
-  const trackHeight = (type: TrackType, count: number) => (type === 'text' || type === 'image') ? Math.max(58, count * 48 + 10) : 58
+  const selectedClipActive = !!selectedClip && project.currentTime >= selectedClip.start && project.currentTime < selectedClip.start + selectedClip.duration
+  const trackHeight = (type: TrackType, count: number) => type !== 'video' ? Math.max(58, count * 48 + 10) : 58
   const hasActiveVideo = !!activeVideo(project.tracks, project.currentTime)
   const timelineWidth = Math.max((project.duration + 10) * pxPerSecond, 720)
   const playheadLeft = project.currentTime * pxPerSecond
@@ -98,6 +106,7 @@ export function App() {
 
     video.currentTime = 0
     setVideoDuration(video.duration)
+    setAudioPlaybackError(null)
     loadVideo(videoName, video.duration)
   }
 
@@ -169,13 +178,26 @@ export function App() {
           <nav className="asset-tabs">
             <button className={assetTab === 'media' ? 'active' : ''} onClick={() => setAssetTab('media')}>미디어</button>
             <button className={assetTab === 'text' ? 'active' : ''} onClick={() => setAssetTab('text')}>텍스트</button>
-            <button disabled>오디오</button>
+            <button className={assetTab === 'audio' ? 'active' : ''} onClick={() => setAssetTab('audio')}>오디오</button>
             <button className={assetTab === 'image' ? 'active' : ''} onClick={() => setAssetTab('image')}>이미지</button>
           </nav>
 
           <input ref={imageInputRef} className="file-input" type="file" multiple accept="image/png,image/jpeg,image/webp" disabled={imageBusy}
             onChange={event => { const files = Array.from(event.target.files ?? []); event.target.value = ''; pause(); void importFiles(files) }} />
-          {assetTab === 'image' ? (
+          <input ref={audioInputRef} className="file-input" type="file" multiple accept="audio/*,.mp3,.wav,.m4a,.ogg,.webm,.flac" disabled={audioBusy}
+            onChange={event => { const files = Array.from(event.target.files ?? []); event.target.value = ''; pause(); setAudioPlaybackError(null); void importAudio(files).then(pause) }} />
+          {assetTab === 'audio' ? (
+            <div className="text-library audio-library">
+              <button className="button primary add-text" disabled={audioBusy} onClick={() => audioInputRef.current?.click()}>{audioBusy ? '오디오 읽는 중…' : '＋ BGM 추가'}</button>
+              <p className="panel-hint">MP3 · WAV · M4A · OGG 등<br />현재 위치에 추가합니다. 목록에서 다시 사용할 수 있습니다.</p>
+              {audioImportError && <p className="image-error" role="alert">{audioImportError}</p>}
+              {Object.values(audioAssets).map(asset => <button className="media-card" key={asset.id}
+                onClick={() => { pause(); insertAudio(asset.id) }} title="현재 위치에 BGM 추가">
+                <span className="media-thumb">♪</span>
+                <span className="media-info"><strong>{asset.name}</strong><small>원본 {formatTime(asset.duration)}</small></span>
+              </button>)}
+            </div>
+          ) : assetTab === 'image' ? (
             <div className="text-library">
               <button className="button primary add-text" disabled={imageBusy} onClick={() => imageInputRef.current?.click()}>{imageBusy ? '이미지 읽는 중…' : '＋ 이미지 추가'}</button>
               <p className="panel-hint">PNG · JPG · WebP · 투명 배경 지원<br />이미지를 클릭하면 현재 위치에 다시 추가합니다.</p>
@@ -223,7 +245,7 @@ export function App() {
           </div>
 
           <div className="preview-stage">
-            {error && <div className="media-error" role="alert">{error}</div>}
+            {(error || audioPlaybackError) && <div className="media-error" role="alert">{error || audioPlaybackError}</div>}
             <div className="phone-canvas">
               {videoUrl ? (
                 <video
@@ -237,7 +259,7 @@ export function App() {
                   onSeeked={onSeeked}
                   onError={() => { pause(); setError('이 영상은 브라우저에서 재생할 수 없습니다. 다른 MP4/WebM을 선택하세요.') }}
                 />
-              ) : textClips.length === 0 && imageClips.length === 0 ? (
+              ) : textClips.length === 0 && imageClips.length === 0 && audioClips.length === 0 ? (
                 <div className="canvas-copy">
                   <span className="eyebrow">Instagram Reel</span>
                   <h1>영상 추가</h1>
@@ -252,7 +274,7 @@ export function App() {
             <button disabled={project.duration <= 0} aria-label="1초 뒤로" onClick={() => seekTo(project.currentTime - 1)}>◀</button>
             <button
               className="play"
-              onClick={togglePlayback}
+              onClick={() => { setAudioPlaybackError(null); togglePlayback() }}
               disabled={project.duration <= 0 || (!!videoUrl && (videoDuration <= 0 || !!error))}
               aria-label={isPlaying ? 'pause' : 'play'}
             >
@@ -273,7 +295,7 @@ export function App() {
               <dl>
                 <dt>타임라인 시작</dt><dd>{selectedClip.start.toFixed(2)}초</dd>
                 <dt>사용 길이</dt><dd>{selectedClip.duration.toFixed(2)}초</dd>
-                {selectedClip.type === 'video' && <>
+                {(selectedClip.type === 'video' || selectedClip.type === 'audio') && <>
                   <dt>원본 시작</dt><dd>{(selectedClip.sourceStart ?? 0).toFixed(2)}초</dd>
                   <dt>원본 끝</dt><dd>{((selectedClip.sourceStart ?? 0) + selectedClip.duration).toFixed(2)}초</dd>
                 </>}
@@ -281,21 +303,29 @@ export function App() {
             </div>
           ) : <p className="panel-hint">클립을 선택하면 편집 구간이 표시됩니다.</p>}
           {selectedClip?.text && <>
-            {!selectedTextActive && <div className="caption-notice">현재 시각에는 이 자막이 표시되지 않습니다.
+            {!selectedClipActive && <div className="caption-notice">현재 시각에는 이 자막이 표시되지 않습니다.
               <button className="button ghost" onClick={() => seekTo(selectedClip.start)}>자막 시작으로 이동</button>
             </div>}
             <TextProperties key={selectedClip.id} clip={selectedClip} onPause={pause} />
           </>}
           {selectedClip?.image && <>
-            {!selectedTextActive && <div className="caption-notice">현재 시각에는 이 이미지가 표시되지 않습니다.
+            {!selectedClipActive && <div className="caption-notice">현재 시각에는 이 이미지가 표시되지 않습니다.
               <button className="button ghost" onClick={() => seekTo(selectedClip.start)}>이미지 시작으로 이동</button>
             </div>}
             <ImageProperties key={selectedClip.id} clip={selectedClip} onPause={pause} />
+          </>}
+          {selectedClip && (selectedClip.type === 'video' || selectedClip.type === 'audio') && <>
+            {selectedClip.type === 'audio' && !selectedClipActive && <div className="caption-notice">현재 시각에는 이 BGM이 재생되지 않습니다.
+              <button className="button ghost" onClick={() => seekTo(selectedClip.start)}>BGM 시작으로 이동</button>
+            </div>}
+            <SoundProperties key={selectedClip.id} clip={selectedClip} onPause={pause} />
           </>}
           <p className="panel-hint">클립을 드래그해 이동하고, 양쪽 가장자리로 구간을 조절하세요.</p>
           <p className="panel-hint">방향키: 1프레임 이동 · Shift: 10프레임<br />Alt + 드래그: 스냅 해제</p>
         </aside>
       </section>
+
+      <AudioPlayback project={project} isPlaying={isPlaying} onFailure={onAudioFailure} />
 
       <section className="timeline-section">
         <div className="timeline-tools">
@@ -366,7 +396,7 @@ export function App() {
                       key={clip.id}
                       clip={clip}
                       clips={track.clips}
-                      top={track.type === 'text' || track.type === 'image' ? 8 + index * 48 : 8}
+                      top={track.type !== 'video' ? 8 + index * 48 : 8}
                       selected={selectedClipId === clip.id}
                       fps={project.canvas.fps}
                       pxPerSecond={pxPerSecond}
