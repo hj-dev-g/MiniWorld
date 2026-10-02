@@ -3,8 +3,11 @@ import type { EditorProject } from '../types/editor'
 
 interface EditorState {
   project: EditorProject
+  selectedClipId: string | null
   setCurrentTime: (time: number) => void
   loadVideo: (name: string, duration: number) => void
+  selectClip: (clipId: string) => void
+  splitSelectedClip: (time: number) => void
 }
 
 const initialProject: EditorProject = {
@@ -73,6 +76,7 @@ const initialProject: EditorProject = {
 
 export const useEditorStore = create<EditorState>((set) => ({
   project: initialProject,
+  selectedClipId: null,
 
   setCurrentTime: (time) =>
     set((state) => ({
@@ -82,8 +86,11 @@ export const useEditorStore = create<EditorState>((set) => ({
       },
     })),
 
-  loadVideo: (name, duration) =>
+  loadVideo: (name, duration) => {
+    const clipId = crypto.randomUUID()
+
     set((state) => ({
+      selectedClipId: clipId,
       project: {
         ...state.project,
         name,
@@ -95,7 +102,7 @@ export const useEditorStore = create<EditorState>((set) => ({
             track.type === 'video'
               ? [
                   {
-                    id: crypto.randomUUID(),
+                    id: clipId,
                     name,
                     type: 'video',
                     start: 0,
@@ -107,5 +114,72 @@ export const useEditorStore = create<EditorState>((set) => ({
               : [],
         })),
       },
-    })),
+    }))
+  },
+
+  selectClip: (clipId) => set({ selectedClipId: clipId }),
+
+  splitSelectedClip: (time) =>
+    set((state) => {
+      if (!state.selectedClipId) {
+        return state
+      }
+
+      let nextSelectedClipId = state.selectedClipId
+      let didSplit = false
+
+      const tracks = state.project.tracks.map((track) => ({
+        ...track,
+        clips: track.clips.flatMap((clip) => {
+          if (clip.id !== state.selectedClipId) {
+            return [clip]
+          }
+
+          const clipEnd = clip.start + clip.duration
+          const splitOffset = time - clip.start
+
+          if (splitOffset <= 0.05 || time >= clipEnd - 0.05) {
+            return [clip]
+          }
+
+          didSplit = true
+
+          const leftId = crypto.randomUUID()
+          const rightId = crypto.randomUUID()
+          const sourceStart = clip.sourceStart ?? 0
+
+          nextSelectedClipId = rightId
+
+          return [
+            {
+              ...clip,
+              id: leftId,
+              duration: splitOffset,
+              sourceDuration: splitOffset,
+            },
+            {
+              ...clip,
+              id: rightId,
+              start: time,
+              duration: clipEnd - time,
+              sourceStart: sourceStart + splitOffset,
+              sourceDuration: clipEnd - time,
+            },
+          ]
+        }),
+      }))
+
+      if (!didSplit) {
+        return state
+      }
+
+      return {
+        ...state,
+        selectedClipId: nextSelectedClipId,
+        project: {
+          ...state.project,
+          tracks,
+        },
+      }
+    }),
 }))
