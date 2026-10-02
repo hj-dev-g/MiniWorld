@@ -27,8 +27,7 @@ export function App() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [videoName, setVideoName] = useState<string | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
-
-  const pxPerSecond = 28
+  const [pxPerSecond, setPxPerSecond] = useState(28)
   const timelineWidth = Math.max(project.duration * pxPerSecond, 720)
   const playheadLeft = project.currentTime * pxPerSecond
 
@@ -268,7 +267,13 @@ export function App() {
           </div>
           <div className="zoom-control">
             <span>Timeline</span>
-            <input type="range" min="16" max="48" defaultValue={pxPerSecond} />
+            <input
+              type="range"
+              min="16"
+              max="64"
+              value={pxPerSecond}
+              onChange={(event) => setPxPerSecond(Number(event.target.value))}
+            />
           </div>
         </div>
 
