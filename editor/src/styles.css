@@ -418,3 +418,70 @@ button {
     height: 430px;
   }
 }
+
+
+.file-input {
+  display: none;
+}
+
+.media-card {
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px;
+  border: 1px solid #2f323a;
+  border-radius: 9px;
+  background: #191b20;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.media-card:hover {
+  border-color: #555a67;
+}
+
+.media-thumb {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  background: #292c34;
+  color: #d9dbe0;
+}
+
+.media-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.media-info strong {
+  max-width: 155px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.media-info small {
+  color: #7f838d;
+  font-size: 11px;
+}
+
+.preview-video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  background: #000;
+}
+
+.transport button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
